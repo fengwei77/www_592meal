@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
+use App\Models\Customer;
 use App\Exceptions\InvalidStateException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -57,11 +57,11 @@ class LineLoginController extends Controller
             // Get user profile from LINE
             $lineUser = $this->getLineUserProfile($accessToken);
 
-            // Create or update user
-            $user = $this->findOrCreateUser($lineUser);
+            // Create or update customer
+            $customer = $this->findOrCreateCustomer($lineUser);
 
-            // Login user
-            Auth::login($user, true);
+            // Login customer with customer guard
+            Auth::guard('customer')->login($customer, true);
 
             // Regenerate session to prevent session fixation attacks
             session()->regenerate();
@@ -158,25 +158,25 @@ class LineLoginController extends Controller
     }
 
     /**
-     * Find or create user from LINE profile
+     * Find or create customer from LINE profile
      *
      * @param array $lineUser
-     * @return User
+     * @return Customer
      */
-    private function findOrCreateUser(array $lineUser): User
+    private function findOrCreateCustomer(array $lineUser): Customer
     {
-        $user = User::where('line_id', $lineUser['userId'])->first();
+        $customer = Customer::where('line_id', $lineUser['userId'])->first();
 
-        if ($user) {
-            // Update existing user
-            $user->update([
+        if ($customer) {
+            // Update existing customer
+            $customer->update([
                 'name' => $lineUser['displayName'],
                 'avatar_url' => $lineUser['pictureUrl'] ?? null,
-                'email' => $lineUser['email'] ?? $user->email,
+                'email' => $lineUser['email'] ?? $customer->email,
             ]);
         } else {
-            // Create new user
-            $user = User::create([
+            // Create new customer
+            $customer = Customer::create([
                 'line_id' => $lineUser['userId'],
                 'name' => $lineUser['displayName'],
                 'email' => $lineUser['email'] ?? null,
@@ -184,6 +184,6 @@ class LineLoginController extends Controller
             ]);
         }
 
-        return $user;
+        return $customer;
     }
 }

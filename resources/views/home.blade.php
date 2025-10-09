@@ -11,7 +11,7 @@
                 美味餐點,LINE 一下即可訂購
             </p>
 
-            @guest
+            @guest('customer')
                 <a href="{{ route('login') }}"
                    class="inline-flex items-center px-6 py-3 text-white font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
                    style="background-color: #06C755;">
@@ -22,7 +22,7 @@
                 </a>
             @else
                 <p class="text-2xl text-gray-700">
-                    歡迎回來,{{ auth()->user()->name }}!
+                    歡迎回來,{{ auth('customer')->user()->name }}!
                 </p>
             @endguest
         </div>

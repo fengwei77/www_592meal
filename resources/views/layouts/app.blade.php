@@ -24,24 +24,24 @@
 
                 <!-- User Menu -->
                 <div class="flex items-center">
-                    @auth
-                        <!-- Authenticated User -->
+                    @auth('customer')
+                        <!-- Authenticated Customer -->
                         <div class="flex items-center space-x-4">
-                            <!-- User Avatar & Name -->
+                            <!-- Customer Avatar & Name -->
                             <div class="flex items-center">
-                                @if(auth()->user()->avatar_url)
-                                    <img src="{{ auth()->user()->avatar_url }}"
-                                         alt="{{ auth()->user()->name }}"
+                                @if(auth('customer')->user()->avatar_url)
+                                    <img src="{{ auth('customer')->user()->avatar_url }}"
+                                         alt="{{ auth('customer')->user()->name }}"
                                          class="w-10 h-10 rounded-full border-2 border-gray-200">
                                 @else
                                     <div class="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center border-2 border-gray-200">
                                         <span class="text-gray-600 font-semibold text-sm">
-                                            {{ mb_substr(auth()->user()->name, 0, 2) }}
+                                            {{ mb_substr(auth('customer')->user()->name, 0, 2) }}
                                         </span>
                                     </div>
                                 @endif
                                 <span class="ml-3 text-sm font-medium text-gray-700">
-                                    {{ auth()->user()->name }}
+                                    {{ auth('customer')->user()->name }}
                                 </span>
                             </div>
 

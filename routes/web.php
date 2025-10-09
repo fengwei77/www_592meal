@@ -21,10 +21,10 @@ Route::middleware('throttle:10,1')->group(function () {
     Route::get('/auth/line/callback', [LineLoginController::class, 'callback'])->name('auth.line.callback');
 });
 
-// Logout route
+// Logout route (顧客登出)
 Route::post('/logout', function () {
-    Auth::logout();
+    Auth::guard('customer')->logout();
     request()->session()->invalidate();
     request()->session()->regenerateToken();
     return redirect('/')->with('success', '登出成功！');
-})->name('logout');
+})->middleware('auth:customer')->name('logout');

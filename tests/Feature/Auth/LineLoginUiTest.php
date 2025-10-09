@@ -2,14 +2,14 @@
 
 namespace Tests\Feature\Auth;
 
-use App\Models\User;
+use App\Models\Customer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
  * UI Tests for LINE Login
  *
- * Tests UI elements for AC1 (Login button) and AC7 (User profile display)
+ * Tests UI elements for AC1 (Login button) and AC7 (Customer profile display)
  */
 class LineLoginUiTest extends TestCase
 {
@@ -60,27 +60,27 @@ class LineLoginUiTest extends TestCase
     }
 
     /**
-     * Test AC7: Authenticated user's name is displayed in navigation
+     * Test AC7: Authenticated customer's name is displayed in navigation
      *
-     * Given: A user is logged in
+     * Given: A customer is logged in
      * When: They visit any page
      * Then: Their name should be displayed in the navigation bar
      */
     public function test_authenticated_user_name_is_displayed(): void
     {
-        // Create and authenticate a user
-        $user = User::create([
+        // Create and authenticate a customer
+        $customer = Customer::create([
             'line_id' => 'U1234567890',
-            'name' => 'Test User Name',
+            'name' => 'Test Customer Name',
             'email' => 'test@example.com',
         ]);
 
-        $response = $this->actingAs($user)->get('/');
+        $response = $this->actingAs($customer, 'customer')->get('/');
 
         $response->assertStatus(200);
 
-        // Verify user name is displayed
-        $response->assertSee('Test User Name', false);
+        // Verify customer name is displayed
+        $response->assertSee('Test Customer Name', false);
 
         // Verify logout button is present
         $response->assertSee('登出', false);
@@ -88,57 +88,57 @@ class LineLoginUiTest extends TestCase
     }
 
     /**
-     * Test AC7: Authenticated user's avatar is displayed in navigation
+     * Test AC7: Authenticated customer's avatar is displayed in navigation
      *
-     * Given: A user with avatar is logged in
+     * Given: A customer with avatar is logged in
      * When: They visit any page
      * Then: Their avatar image should be displayed in the navigation bar
      */
     public function test_authenticated_user_avatar_is_displayed(): void
     {
-        // Create user with avatar
-        $user = User::create([
+        // Create customer with avatar
+        $customer = Customer::create([
             'line_id' => 'U9876543210',
-            'name' => 'Avatar User',
+            'name' => 'Avatar Customer',
             'email' => 'avatar@example.com',
             'avatar_url' => 'https://example.com/avatar.jpg',
         ]);
 
-        $response = $this->actingAs($user)->get('/');
+        $response = $this->actingAs($customer, 'customer')->get('/');
 
         $response->assertStatus(200);
 
         // Verify avatar image is rendered
-        $response->assertSee($user->avatar_url, false);
-        $response->assertSee('<img src="' . $user->avatar_url . '"', false);
+        $response->assertSee($customer->avatar_url, false);
+        $response->assertSee('<img src="' . $customer->avatar_url . '"', false);
 
-        // Verify alt text contains user name
-        $response->assertSee('alt="' . $user->name . '"', false);
+        // Verify alt text contains customer name
+        $response->assertSee('alt="' . $customer->name . '"', false);
     }
 
     /**
-     * Test AC7: User without avatar displays fallback UI
+     * Test AC7: Customer without avatar displays fallback UI
      *
-     * Given: A user without avatar is logged in
+     * Given: A customer without avatar is logged in
      * When: They visit any page
      * Then: A fallback avatar (initials) should be displayed
      */
     public function test_user_without_avatar_displays_fallback(): void
     {
-        // Create user without avatar
-        $user = User::create([
+        // Create customer without avatar
+        $customer = Customer::create([
             'line_id' => 'U1111111111',
-            'name' => '測試用戶',
+            'name' => '測試客戶',
             'email' => 'no-avatar@example.com',
             'avatar_url' => null,
         ]);
 
-        $response = $this->actingAs($user)->get('/');
+        $response = $this->actingAs($customer, 'customer')->get('/');
 
         $response->assertStatus(200);
 
-        // Verify user name is still displayed
-        $response->assertSee('測試用戶', false);
+        // Verify customer name is still displayed
+        $response->assertSee('測試客戶', false);
 
         // Verify initials are displayed (first 2 characters)
         $response->assertSee('測試', false);

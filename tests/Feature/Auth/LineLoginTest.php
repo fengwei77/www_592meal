@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Auth;
 
-use App\Models\User;
+use App\Models\Customer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Session;
@@ -58,11 +58,11 @@ class LineLoginTest extends TestCase
         $response->assertRedirect('/');
         $response->assertSessionHas('success', '登入成功！');
 
-        // Assert user is authenticated
-        $this->assertAuthenticated();
+        // Assert customer is authenticated
+        $this->assertAuthenticated('customer');
 
-        // Assert user was created in database
-        $this->assertDatabaseHas('users', [
+        // Assert customer was created in database
+        $this->assertDatabaseHas('customers', [
             'line_id' => 'U1234567890abcdef',
             'name' => 'Test User',
             'email' => 'test@example.com',
@@ -74,12 +74,12 @@ class LineLoginTest extends TestCase
     }
 
     /**
-     * Test that existing user can login and update their profile
+     * Test that existing customer can login and update their profile
      */
     public function test_existing_user_can_login_and_update_profile(): void
     {
-        // Create existing user
-        $user = User::create([
+        // Create existing customer
+        $customer = Customer::create([
             'line_id' => 'U1234567890abcdef',
             'name' => 'Old Name',
             'email' => 'old@example.com',
@@ -108,13 +108,13 @@ class LineLoginTest extends TestCase
         ]));
 
         $response->assertRedirect('/');
-        $this->assertAuthenticated();
+        $this->assertAuthenticated('customer');
 
-        // Assert user profile was updated
-        $user->refresh();
-        $this->assertEquals('Updated Name', $user->name);
-        $this->assertEquals('new@example.com', $user->email);
-        $this->assertEquals('https://example.com/new_avatar.jpg', $user->avatar_url);
+        // Assert customer profile was updated
+        $customer->refresh();
+        $this->assertEquals('Updated Name', $customer->name);
+        $this->assertEquals('new@example.com', $customer->email);
+        $this->assertEquals('https://example.com/new_avatar.jpg', $customer->avatar_url);
     }
 
     /**
@@ -133,8 +133,8 @@ class LineLoginTest extends TestCase
         $response->assertRedirect(route('login'));
         $response->assertSessionHas('error', '安全驗證失敗，請重新登入');
 
-        // Assert user is not authenticated
-        $this->assertGuest();
+        // Assert customer is not authenticated
+        $this->assertGuest('customer');
     }
 
     /**
@@ -151,7 +151,7 @@ class LineLoginTest extends TestCase
 
         $response->assertRedirect(route('login'));
         $response->assertSessionHas('error');
-        $this->assertGuest();
+        $this->assertGuest('customer');
     }
 
     /**
@@ -174,7 +174,7 @@ class LineLoginTest extends TestCase
 
         $response->assertRedirect(route('login'));
         $response->assertSessionHas('error', '登入失敗，請稍後再試');
-        $this->assertGuest();
+        $this->assertGuest('customer');
     }
 
     /**
@@ -200,30 +200,30 @@ class LineLoginTest extends TestCase
 
         $response->assertRedirect(route('login'));
         $response->assertSessionHas('error', '登入失敗，請稍後再試');
-        $this->assertGuest();
+        $this->assertGuest('customer');
     }
 
     /**
-     * Test that user can logout successfully
+     * Test that customer can logout successfully
      */
     public function test_user_can_logout(): void
     {
-        // Create and authenticate user
-        $user = User::create([
+        // Create and authenticate customer
+        $customer = Customer::create([
             'line_id' => 'U1234567890abcdef',
-            'name' => 'Test User',
+            'name' => 'Test Customer',
             'email' => 'test@example.com',
         ]);
 
-        $this->actingAs($user);
-        $this->assertAuthenticated();
+        $this->actingAs($customer, 'customer');
+        $this->assertAuthenticated('customer');
 
         // Logout
         $response = $this->post(route('logout'));
 
         $response->assertRedirect('/');
         $response->assertSessionHas('success', '登出成功！');
-        $this->assertGuest();
+        $this->assertGuest('customer');
     }
 
     /**
@@ -253,10 +253,10 @@ class LineLoginTest extends TestCase
         ]));
 
         $response->assertRedirect('/');
-        $this->assertAuthenticated();
+        $this->assertAuthenticated('customer');
 
-        // Assert user was created without email
-        $this->assertDatabaseHas('users', [
+        // Assert customer was created without email
+        $this->assertDatabaseHas('customers', [
             'line_id' => 'U9876543210',
             'name' => 'User Without Email',
             'email' => null,
