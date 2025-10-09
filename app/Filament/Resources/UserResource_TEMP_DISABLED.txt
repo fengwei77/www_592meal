@@ -1,0 +1,2 @@
+This file is temporarily disabled due to PHP 8.4 type compatibility issues with Filament.
+Will be re-enabled after migration completes.
