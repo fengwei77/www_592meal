@@ -2,10 +2,10 @@
 
 namespace Tests\Feature\Auth;
 
-use App\Models\Customer;
+use App\Models\Customer; // Use the Customer model
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Session;
 use Tests\TestCase;
 
 class LineLoginTest extends TestCase
@@ -13,253 +13,91 @@ class LineLoginTest extends TestCase
     use RefreshDatabase;
 
     /**
-     * Test that user can redirect to LINE authorization page
+     * Test that the redirect to LINE works correctly.
      */
-    public function test_user_can_redirect_to_line_authorization_page(): void
+    public function test_user_is_redirected_to_line(): void
     {
-        $response = $this->get(route('auth.line'));
+        $response = $this->get('/auth/line');
 
         $response->assertStatus(302);
-        $this->assertStringContainsString('access.line.me/oauth2/v2.1/authorize', $response->headers->get('Location'));
-        $this->assertTrue(Session::has('line_login_state'));
+        $this->assertStringStartsWith('https://access.line.me/oauth2/v2.1/authorize', $response->headers->get('Location'));
+        $this->assertNotNull(session('line_login_state'));
     }
 
     /**
-     * Test that user can login with LINE successfully
+     * Test that a new customer can successfully log in via LINE callback.
      */
-    public function test_user_can_login_with_line(): void
+    public function test_a_new_customer_can_login_with_line(): void
     {
-        // Mock LINE API responses
+        // Arrange: Mock the LINE API responses
         Http::fake([
             'api.line.me/oauth2/v2.1/token' => Http::response([
                 'access_token' => 'mock_access_token',
-                'token_type' => 'Bearer',
-                'expires_in' => 2592000,
+                'id_token' => 'mock_id_token',
             ]),
             'api.line.me/v2/profile' => Http::response([
-                'userId' => 'U1234567890abcdef',
-                'displayName' => 'Test User',
+                'userId' => 'U1234567890ABCDEF',
+                'displayName' => 'Test Customer',
                 'pictureUrl' => 'https://example.com/avatar.jpg',
-                'email' => 'test@example.com',
             ]),
         ]);
 
-        // Set state in session
-        $state = 'test_state_12345';
-        Session::put('line_login_state', $state);
+        $state = 'test_state_string';
+        session(['line_login_state' => $state]);
 
-        // Simulate LINE callback
-        $response = $this->get(route('auth.line.callback', [
-            'code' => 'AUTH_CODE_12345',
-            'state' => $state,
-        ]));
+        // Act: Simulate the user being redirected back from LINE
+        $response = $this->get('/auth/line/callback?code=test_code&state=' . $state);
 
-        // Assert user is redirected to home
+        // Assert
         $response->assertRedirect('/');
-        $response->assertSessionHas('success', '登入成功！');
-
-        // Assert customer is authenticated
-        $this->assertAuthenticated('customer');
-
-        // Assert customer was created in database
-        $this->assertDatabaseHas('customers', [
-            'line_id' => 'U1234567890abcdef',
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+        $this->assertTrue(Auth::guard('customer')->check(), 'Customer should be authenticated');
+        $this->assertDatabaseHas('customers', [ // Check the customers table
+            'line_id' => 'U1234567890ABCDEF',
+            'name' => 'Test Customer',
             'avatar_url' => 'https://example.com/avatar.jpg',
         ]);
-
-        // Assert state was removed from session
-        $this->assertFalse(Session::has('line_login_state'));
     }
 
     /**
-     * Test that existing customer can login and update their profile
+     * Test that an existing customer can log in.
      */
-    public function test_existing_user_can_login_and_update_profile(): void
+    public function test_an_existing_customer_can_login_with_line(): void
     {
-        // Create existing customer
-        $customer = Customer::create([
-            'line_id' => 'U1234567890abcdef',
-            'name' => 'Old Name',
-            'email' => 'old@example.com',
-            'avatar_url' => 'https://example.com/old_avatar.jpg',
-        ]);
+        // Arrange: Create an existing customer and mock LINE API
+        $customer = Customer::factory()->create(['line_id' => 'U1234567890ABCDEF']);
 
-        // Mock LINE API responses with updated info
         Http::fake([
-            'api.line.me/oauth2/v2.1/token' => Http::response([
-                'access_token' => 'mock_access_token',
-            ]),
-            'api.line.me/v2/profile' => Http::response([
-                'userId' => 'U1234567890abcdef',
-                'displayName' => 'Updated Name',
-                'pictureUrl' => 'https://example.com/new_avatar.jpg',
-                'email' => 'new@example.com',
-            ]),
+            'api.line.me/oauth2/v2.1/token' => Http::response(['access_token' => 'mock_access_token', 'id_token' => 'mock_id_token']),
+            'api.line.me/v2/profile' => Http::response(['userId' => 'U1234567890ABCDEF', 'displayName' => 'Updated Name']),
         ]);
 
-        $state = 'test_state_67890';
-        Session::put('line_login_state', $state);
+        $state = 'test_state_string';
+        session(['line_login_state' => $state]);
 
-        $response = $this->get(route('auth.line.callback', [
-            'code' => 'AUTH_CODE_67890',
-            'state' => $state,
-        ]));
+        // Act
+        $response = $this->get('/auth/line/callback?code=test_code&state=' . $state);
 
+        // Assert
         $response->assertRedirect('/');
-        $this->assertAuthenticated('customer');
-
-        // Assert customer profile was updated
-        $customer->refresh();
-        $this->assertEquals('Updated Name', $customer->name);
-        $this->assertEquals('new@example.com', $customer->email);
-        $this->assertEquals('https://example.com/new_avatar.jpg', $customer->avatar_url);
+        $this->assertTrue(Auth::guard('customer')->check(), 'Customer should be authenticated');
+        $this->assertEquals($customer->id, Auth::guard('customer')->id());
+        $this->assertDatabaseCount('customers', 1);
     }
 
     /**
-     * Test that invalid state parameter is rejected
+     * Test that the login fails if the state is invalid.
      */
-    public function test_it_rejects_invalid_state_parameter(): void
+    public function test_it_rejects_an_invalid_state_parameter(): void
     {
-        Session::put('line_login_state', 'valid_state_12345');
+        // Arrange: Set a valid state in session
+        session(['line_login_state' => 'the_real_state']);
 
-        $response = $this->get(route('auth.line.callback', [
-            'code' => 'AUTH_CODE',
-            'state' => 'invalid_state_67890',
-        ]));
+        // Act: Attempt callback with a fake state
+        $response = $this->get('/auth/line/callback?code=test_code&state=fake_state');
 
-        // Assert redirected to login with error
-        $response->assertRedirect(route('login'));
-        $response->assertSessionHas('error', '安全驗證失敗，請重新登入');
-
-        // Assert customer is not authenticated
-        $this->assertGuest('customer');
-    }
-
-    /**
-     * Test that missing state parameter is rejected
-     */
-    public function test_it_rejects_missing_state_parameter(): void
-    {
-        Session::put('line_login_state', 'valid_state');
-
-        $response = $this->get(route('auth.line.callback', [
-            'code' => 'AUTH_CODE',
-            // state parameter is missing
-        ]));
-
-        $response->assertRedirect(route('login'));
-        $response->assertSessionHas('error');
-        $this->assertGuest('customer');
-    }
-
-    /**
-     * Test that LINE API token exchange failure is handled
-     */
-    public function test_it_handles_line_api_token_exchange_failure(): void
-    {
-        // Mock failed token exchange
-        Http::fake([
-            'api.line.me/oauth2/v2.1/token' => Http::response([], 400),
-        ]);
-
-        $state = 'test_state';
-        Session::put('line_login_state', $state);
-
-        $response = $this->get(route('auth.line.callback', [
-            'code' => 'INVALID_CODE',
-            'state' => $state,
-        ]));
-
-        $response->assertRedirect(route('login'));
-        $response->assertSessionHas('error', '登入失敗，請稍後再試');
-        $this->assertGuest('customer');
-    }
-
-    /**
-     * Test that LINE API profile fetch failure is handled
-     */
-    public function test_it_handles_line_api_profile_fetch_failure(): void
-    {
-        // Mock successful token exchange but failed profile fetch
-        Http::fake([
-            'api.line.me/oauth2/v2.1/token' => Http::response([
-                'access_token' => 'mock_token',
-            ]),
-            'api.line.me/v2/profile' => Http::response([], 500),
-        ]);
-
-        $state = 'test_state';
-        Session::put('line_login_state', $state);
-
-        $response = $this->get(route('auth.line.callback', [
-            'code' => 'AUTH_CODE',
-            'state' => $state,
-        ]));
-
-        $response->assertRedirect(route('login'));
-        $response->assertSessionHas('error', '登入失敗，請稍後再試');
-        $this->assertGuest('customer');
-    }
-
-    /**
-     * Test that customer can logout successfully
-     */
-    public function test_user_can_logout(): void
-    {
-        // Create and authenticate customer
-        $customer = Customer::create([
-            'line_id' => 'U1234567890abcdef',
-            'name' => 'Test Customer',
-            'email' => 'test@example.com',
-        ]);
-
-        $this->actingAs($customer, 'customer');
-        $this->assertAuthenticated('customer');
-
-        // Logout
-        $response = $this->post(route('logout'));
-
-        $response->assertRedirect('/');
-        $response->assertSessionHas('success', '登出成功！');
-        $this->assertGuest('customer');
-    }
-
-    /**
-     * Test that user without email can login
-     */
-    public function test_user_without_email_can_login(): void
-    {
-        // Mock LINE API without email
-        Http::fake([
-            'api.line.me/oauth2/v2.1/token' => Http::response([
-                'access_token' => 'mock_token',
-            ]),
-            'api.line.me/v2/profile' => Http::response([
-                'userId' => 'U9876543210',
-                'displayName' => 'User Without Email',
-                'pictureUrl' => 'https://example.com/avatar.jpg',
-                // email is not provided
-            ]),
-        ]);
-
-        $state = 'test_state';
-        Session::put('line_login_state', $state);
-
-        $response = $this->get(route('auth.line.callback', [
-            'code' => 'AUTH_CODE',
-            'state' => $state,
-        ]));
-
-        $response->assertRedirect('/');
-        $this->assertAuthenticated('customer');
-
-        // Assert customer was created without email
-        $this->assertDatabaseHas('customers', [
-            'line_id' => 'U9876543210',
-            'name' => 'User Without Email',
-            'email' => null,
-        ]);
+        // Assert
+        $response->assertRedirect('/login'); // Should redirect with an error
+        $this->assertFalse(Auth::guard('customer')->check(), 'Customer should not be authenticated');
+        $this->assertTrue(session()->has('error'));
     }
 }

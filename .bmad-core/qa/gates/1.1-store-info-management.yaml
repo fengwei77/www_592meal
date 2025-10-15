@@ -1,0 +1,28 @@
+schema: 1
+story: '1.1'
+gate: CONCERNS
+status_reason: 'Core Store model exists but missing complete admin interface for店家資訊管理.'
+reviewer: 'QA Gate System'
+updated: '2025-01-15T12:00:00Z'
+top_issues:
+  - id: 'ARCH-001'
+    severity: high
+    finding: 'Missing Filament StoreResource for backend management'
+    suggested_action: 'Create StoreResource with complete CRUD operations'
+  - id: 'UI-001'
+    severity: medium
+    finding: 'No store settings page for owners to manage their store information'
+    suggested_action: 'Implement StoreSettingsPage with business hours, images, and contact info'
+  - id: 'REQ-001'
+    severity: medium
+    finding: 'Store model missing Phase 1 required fields (store_type, business_hours, latitude, longitude)'
+    suggested_action: 'Add migration to extend stores table with required Phase 1 fields'
+  - id: 'SEC-001'
+    severity: medium
+    finding: 'No authorization checks to ensure users can only manage their own stores'
+    suggested_action: 'Implement policies and middleware for store ownership verification'
+  - id: 'TEST-001'
+    severity: low
+    finding: 'No unit or feature tests for store management functionality'
+    suggested_action: 'Add comprehensive test coverage for store CRUD operations'
+waiver: { active: false }

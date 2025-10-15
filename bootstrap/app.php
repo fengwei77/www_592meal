@@ -9,10 +9,25 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
         commands: __DIR__.'/../routes/console.php',
+        channels: __DIR__.'/../routes/channels.php',
         health: '/up',
+        then: function () {
+            Route::middleware('web')
+                ->domain(parse_url(config('app.admin_url'), PHP_URL_HOST))
+                ->name('admin.')
+                ->group(base_path('routes/admin.php'));
+        },
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // 在測試環境中不檢查網域，避免干擾測試
+        // 直接檢查環境變數，避免過早使用 app() 容器
+        $env = $_ENV['APP_ENV'] ?? $_SERVER['APP_ENV'] ?? 'production';
+
+        if ($env !== 'testing') {
+            $middleware->web(append: [
+                \App\Http\Middleware\CheckAdminDomain::class,
+            ]);
+        }
     })
     ->withSchedule(function (Schedule $schedule): void {
         // 每小時檢查並恢復超過 24 小時的臨時關閉 2FA

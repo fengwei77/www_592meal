@@ -53,6 +53,19 @@ return [
     */
 
     'url' => env('APP_URL', 'http://localhost'),
+    'admin_url' => env('ADMIN_URL', env('APP_URL')),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Admin Application URL
+    |--------------------------------------------------------------------------
+    |
+    | This URL is used for the admin panel (Filament). Separating the admin
+    | domain from the frontend provides an additional layer of security.
+    |
+    */
+
+    'admin_url' => env('ADMIN_URL', env('APP_URL')),
 
     /*
     |--------------------------------------------------------------------------
@@ -78,11 +91,11 @@ return [
     |
     */
 
-    'locale' => env('APP_LOCALE', 'en'),
+    'locale' => env('APP_LOCALE', 'zh-TW'),
 
     'fallback_locale' => env('APP_FALLBACK_LOCALE', 'en'),
 
-    'faker_locale' => env('APP_FAKER_LOCALE', 'en_US'),
+    'faker_locale' => env('APP_FAKER_LOCALE', 'zh_TW'),
 
     /*
     |--------------------------------------------------------------------------

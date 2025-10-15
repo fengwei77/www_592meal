@@ -31,6 +31,12 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'user_type', // Add this
+        'max_stores', // Add this
+        'line_id', // Add this
+        'avatar_url', // Add this
+        'email_verification_code',
+        'email_verification_code_expires_at',
         'ip_whitelist_enabled',
         'ip_whitelist',
         'two_factor_enabled',

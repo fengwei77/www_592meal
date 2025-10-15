@@ -9,8 +9,11 @@
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Scripts -->
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="antialiased bg-gray-50">
+<body class="antialiased bg-gray-50 flex flex-col min-h-screen">
     <!-- Navigation Bar -->
     <nav class="bg-white shadow-sm">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -18,7 +21,7 @@
                 <!-- Logo -->
                 <div class="flex items-center">
                     <a href="{{ route('home') }}" class="text-2xl font-bold text-gray-900">
-                        592Meal
+                        592Meal-我就餓
                     </a>
                 </div>
 
@@ -87,14 +90,17 @@
     @endif
 
     <!-- Main Content -->
-    <main>
+    <main class="flex-grow">
         @yield('content')
     </main>
 
-    <!-- Footer (Optional) -->
-    <footer class="bg-white border-t border-gray-200 mt-12">
-        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-            <p class="text-center text-sm text-gray-500">
+    <!-- Footer -->
+    <footer class="bg-white border-t border-gray-200 py-6 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <a href="{{ route('merchant.register') }}" class="text-sm text-gray-500 hover:text-gray-700 hover:underline">
+                店家註冊
+            </a>
+            <p class="mt-4 text-xs text-gray-400">
                 &copy; {{ date('Y') }} 592Meal. All rights reserved.
             </p>
         </div>
