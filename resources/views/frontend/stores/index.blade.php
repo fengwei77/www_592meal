@@ -631,7 +631,9 @@ const state = {
     },
     stores: [],
     map: null,
-    markers: []
+    markers: [],
+    userLocation: null,
+    userLocationMarker: null
 };
 
 // 切換檢視模式
@@ -708,6 +710,207 @@ function initMap() {
 
     // 載入店家資料並標記
     loadMapStores();
+
+    // 加入定位控制按鈕
+    addLocationControl();
+}
+
+// 加入定位控制按鈕
+function addLocationControl() {
+    if (!state.map) return;
+
+    // 建立定位控制按鈕
+    const locationControl = L.control({ position: 'topright' });
+
+    locationControl.onAdd = function(map) {
+        const div = L.DomUtil.create('div', 'leaflet-bar');
+        div.innerHTML = `
+            <button id="location-btn"
+                    onclick="getCurrentLocation()"
+                    title="取得我的位置"
+                    style="background: white; border: 2px solid rgba(0,0,0,0.2); border-radius: 4px; padding: 6px; cursor: pointer; font-size: 16px;">
+                📍
+            </button>
+        `;
+
+        // 防止點擊按鈕時觸發地圖事件
+        L.DomEvent.disableClickPropagation(div);
+
+        return div;
+    };
+
+    locationControl.addTo(state.map);
+}
+
+// 取得使用者目前位置
+async function getCurrentLocation() {
+    const btn = document.getElementById('location-btn');
+    const originalText = btn.innerHTML;
+
+    // 檢查瀏覽器是否支援地理定位
+    if (!navigator.geolocation) {
+        showToast('您的瀏覽器不支援地理定位功能', 'error');
+        return;
+    }
+
+    try {
+        // 顯示載入狀態
+        btn.innerHTML = '⏳';
+        btn.disabled = true;
+
+        // 取得位置
+        const position = await new Promise((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 300000 // 5分鐘內的快取位置
+            });
+        });
+
+        const { latitude, longitude } = position.coords;
+
+        // 移除舊的使用者位置標記
+        if (state.userLocationMarker) {
+            state.map.removeLayer(state.userLocationMarker);
+        }
+
+        // 建立使用者位置標記
+        const userIcon = L.divIcon({
+            html: '<div style="background: #3b82f6; border: 3px solid white; border-radius: 50%; width: 16px; height: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
+            iconSize: [16, 16],
+            className: 'user-location-marker'
+        });
+
+        state.userLocationMarker = L.marker([latitude, longitude], { icon: userIcon })
+            .addTo(state.map)
+            .bindPopup('<strong>您的位置</strong>')
+            .openPopup();
+
+        // 更新地圖中心點並放大
+        state.map.setView([latitude, longitude], 14);
+
+        // 更新篩選條件中的使用者位置
+        state.userLocation = { latitude, longitude };
+
+        // 重新載入店家資料（按距離排序）
+        loadMapStoresWithDistance();
+
+        showToast('定位成功！已顯示附近店家', 'success');
+
+    } catch (error) {
+        let errorMessage = '無法取得您的位置';
+
+        switch(error.code) {
+            case error.PERMISSION_DENIED:
+                errorMessage = '您拒絕了位置權限請求';
+                break;
+            case error.POSITION_UNAVAILABLE:
+                errorMessage = '位置資訊暫時無法使用';
+                break;
+            case error.TIMEOUT:
+                errorMessage = '定位請求超時';
+                break;
+        }
+
+        showToast(errorMessage, 'error');
+        console.error('定位錯誤:', error);
+
+    } finally {
+        // 恢復按鈕狀態
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+}
+
+// 載入地圖店家資料（包含距離計算）
+async function loadMapStoresWithDistance() {
+    if (!state.userLocation) {
+        loadMapStores();
+        return;
+    }
+
+    try {
+        const params = new URLSearchParams();
+        Object.entries(state.currentFilters).forEach(([key, value]) => {
+            if (value) params.set(key, value);
+        });
+
+        // 加入使用者位置參數
+        params.set('user_lat', state.userLocation.latitude);
+        params.set('user_lng', state.userLocation.longitude);
+
+        const response = await fetch(`/api/stores/map?${params}`);
+        const data = await response.json();
+
+        // 清除現有標記
+        state.markers.forEach(marker => state.map.removeLayer(marker));
+        state.markers = [];
+
+        // 添加新標記（包含距離資訊）
+        data.stores.forEach(store => {
+            const popupContent = `
+                <div style="min-width: 220px;">
+                    <img src="${store.logo_url}" style="width: 60px; height: 60px; border-radius: 8px; object-fit: cover;">
+                    <h4 style="margin: 8px 0 4px 0;">${store.name}</h4>
+                    ${store.distance ? `<p style="margin: 0 0 4px 0; color: #3b82f6; font-size: 14px; font-weight: bold;">📍 ${store.distance}</p>` : ''}
+                    <p style="margin: 0 0 4px 0; color: #666; font-size: 14px;">${store.address}</p>
+                    <p style="margin: 0 0 8px 0; color: ${store.is_open ? '#10b981' : '#6b7280'}; font-size: 13px;">
+                        ${store.is_open ? '🟢 ' : '🔴 '}${store.open_hours_text}
+                    </p>
+                    <a href="${store.store_url}"
+                       class="btn btn-primary btn-sm"
+                       style="background: #3b82f6; color: white; padding: 4px 12px; border-radius: 4px; text-decoration: none; display: inline-block;">
+                        進入店家
+                    </a>
+                    ${store.distance ? `
+                        <button onclick="navigateToStore(${store.latitude}, ${store.longitude}, '${store.name}')"
+                                class="btn btn-secondary btn-sm"
+                                style="background: #6b7280; color: white; padding: 4px 12px; border-radius: 4px; text-decoration: none; display: inline-block; margin-left: 4px; border: none; cursor: pointer;">
+                            🧭 導航
+                        </button>
+                    ` : ''}
+                </div>
+            `;
+
+            const marker = L.marker([store.latitude, store.longitude])
+                .addTo(state.map)
+                .bindPopup(popupContent);
+
+            state.markers.push(marker);
+        });
+
+        // 自動調整地圖範圍
+        if (state.markers.length > 0) {
+            const group = new L.featureGroup([...state.markers, state.userLocationMarker].filter(Boolean));
+            state.map.fitBounds(group.getBounds().pad(0.15));
+        }
+
+    } catch (error) {
+        console.error('載入地圖店家失敗:', error);
+        // 降級到原始方法
+        loadMapStores();
+    }
+}
+
+// 導航到店家
+function navigateToStore(lat, lng, storeName) {
+    // 優先嘗試使用系統原生地圖應用
+    if (isMobileDevice()) {
+        // 行動裝置：嘗試開啟 Google Maps 或系統地圖
+        const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+        window.open(googleMapsUrl, '_blank');
+    } else {
+        // 桌面裝置：開啟 Google Maps 網頁版
+        const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+        window.open(googleMapsUrl, '_blank');
+    }
+
+    showToast(`正在開啟地圖導航至 ${storeName}`, 'info');
+}
+
+// 檢測是否為行動裝置
+function isMobileDevice() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 }
 
 // 載入地圖店家資料
@@ -818,6 +1021,26 @@ function animateNumbers() {
 document.addEventListener('DOMContentLoaded', function() {
     // 啟動數字動畫
     animateNumbers();
+
+    // 處理附近篩選參數
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('nearby') === 'true' && urlParams.get('lat') && urlParams.get('lng')) {
+        const lat = parseFloat(urlParams.get('lat'));
+        const lng = parseFloat(urlParams.get('lng'));
+
+        if (!isNaN(lat) && !isNaN(lng)) {
+            state.userLocation = { latitude: lat, longitude: lng };
+
+            // 更新附近按鈕狀態
+            const nearbyBtn = document.getElementById('nearby-btn');
+            const nearbyBtnText = document.getElementById('nearby-btn-text');
+            if (nearbyBtn && nearbyBtnText) {
+                nearbyBtn.classList.add('bg-gradient-to-r', 'from-blue-500', 'to-indigo-600');
+                nearbyBtn.classList.remove('from-green-500', 'to-emerald-600');
+                nearbyBtnText.textContent = '附近店家模式';
+            }
+        }
+    }
 
     // 如果是地圖模式，初始化地圖
     if (state.currentView === 'map') {

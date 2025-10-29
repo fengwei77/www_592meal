@@ -22,7 +22,41 @@
             <input type="hidden" name="search" value="{{ request('search') }}">
         @endif
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <!-- 附近店家快速篩選 -->
+            <div class="space-y-3">
+                <label class="block text-sm font-semibold text-gray-900 flex items-center">
+                    <svg class="w-4 h-4 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                    附近店家
+                </label>
+                <div class="flex flex-col space-y-2">
+                    <button
+                        type="button"
+                        onclick="filterNearbyStores()"
+                        id="nearby-btn"
+                        class="w-full px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 focus:outline-none focus:ring-2 focus:ring-green-500 transition-all duration-200 flex items-center justify-center shadow-lg hover:shadow-xl"
+                    >
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                        <span id="nearby-btn-text">定位附近店家</span>
+                    </button>
+                    <div id="nearby-status" class="text-xs text-gray-500 text-center hidden">
+                        <span class="inline-flex items-center">
+                            <svg class="animate-spin -ml-1 mr-2 h-3 w-3 text-gray-500" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            定位中...
+                        </span>
+                    </div>
+                </div>
+            </div>
+
             <!-- 縣市篩選 -->
             <div class="space-y-3">
                 <label for="city-filter" class="block text-sm font-semibold text-gray-900 flex items-center">
@@ -178,6 +212,85 @@ function updateAreas(city) {
         });
 }
 
+// 篩選附近店家
+async function filterNearbyStores() {
+    const btn = document.getElementById('nearby-btn');
+    const btnText = document.getElementById('nearby-btn-text');
+    const statusDiv = document.getElementById('nearby-status');
+    const originalText = btnText.textContent;
+
+    // 檢查瀏覽器是否支援地理定位
+    if (!navigator.geolocation) {
+        showToast('您的瀏覽器不支援地理定位功能', 'error');
+        return;
+    }
+
+    try {
+        // 顯示載入狀態
+        btn.disabled = true;
+        btnText.textContent = '定位中...';
+        statusDiv.classList.remove('hidden');
+
+        // 取得位置
+        const position = await new Promise((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 300000 // 5分鐘內的快取位置
+            });
+        });
+
+        const { latitude, longitude } = position.coords;
+
+        // 更新 URL 參數
+        const url = new URL(window.location);
+        url.searchParams.delete('city');
+        url.searchParams.delete('area');
+        url.searchParams.set('nearby', 'true');
+        url.searchParams.set('lat', latitude);
+        url.searchParams.set('lng', longitude);
+
+        // 如果是地圖視圖，直接更新地圖
+        if (state.currentView === 'map') {
+            state.userLocation = { latitude, longitude };
+            await loadMapStoresWithDistance();
+
+            // 切換到地圖視圖並更新地圖中心
+            switchView('map');
+            state.map.setView([latitude, longitude], 14);
+
+            showToast('定位成功！已顯示附近店家', 'success');
+        } else {
+            // 如果是列表視圖，重新載入頁面
+            window.location.href = url.toString();
+        }
+
+    } catch (error) {
+        let errorMessage = '無法取得您的位置';
+
+        switch(error.code) {
+            case error.PERMISSION_DENIED:
+                errorMessage = '您拒絕了位置權限請求';
+                break;
+            case error.POSITION_UNAVAILABLE:
+                errorMessage = '位置資訊暫時無法使用';
+                break;
+            case error.TIMEOUT:
+                errorMessage = '定位請求超時';
+                break;
+        }
+
+        showToast(errorMessage, 'error');
+        console.error('定位錯誤:', error);
+
+    } finally {
+        // 恢復按鈕狀態
+        btn.disabled = false;
+        btnText.textContent = originalText;
+        statusDiv.classList.add('hidden');
+    }
+}
+
 // 清除篩選條件
 function clearFilters() {
     const form = document.querySelector('.filters-section form');
@@ -191,6 +304,13 @@ function clearFilters() {
     const areaSelect = document.getElementById('area-filter');
     areaSelect.disabled = true;
     areaSelect.innerHTML = '<option value="">請先選擇縣市</option>';
+
+    // 清除附近篩選狀態
+    state.userLocation = null;
+    if (state.userLocationMarker) {
+        state.map.removeLayer(state.userLocationMarker);
+        state.userLocationMarker = null;
+    }
 
     // 提交表單
     form.submit();

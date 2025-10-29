@@ -82,16 +82,22 @@ class StoreController extends Controller
         $search = $request->get('search');
         $type = $request->get('type');
         $page = $request->get('page', 1);
+        $nearby = $request->get('nearby');
+        $userLat = $request->get('lat'); // 使用者緯度
+        $userLng = $request->get('lng'); // 使用者經度
 
         $cacheKey = "stores:list:" . md5(serialize([
             'city' => $city,
             'area' => $area,
             'search' => $search,
             'type' => $type,
+            'nearby' => $nearby,
+            'user_lat' => $userLat,
+            'user_lng' => $userLng,
             'page' => $page
         ]));
 
-        $data = Cache::remember($cacheKey, 300, function () use ($city, $area, $search, $type) {
+        $data = Cache::remember($cacheKey, 300, function () use ($city, $area, $search, $type, $nearby, $userLat, $userLng) {
             $query = Store::where('is_active', true)
                           ->with(['owner'])
                           ->withCount(['orders as orders_count', 'menuItems as menu_items_count']);
@@ -117,13 +123,31 @@ class StoreController extends Controller
                 });
             }
 
-            $stores = $query->orderBy('is_featured', 'desc')
-                           ->orderBy('created_at', 'desc')
-                           ->paginate(12);
+            // 附近店家篩選
+            if ($nearby === 'true' && $userLat && $userLng) {
+                // 使用 Haversine 公式計算距離並篩選附近店家
+                $query->selectRaw('*,
+                    (6371 * acos(cos(radians(?)) * cos(radians(latitude)) *
+                    cos(radians(longitude) - radians(?)) + sin(radians(?)) *
+                    sin(radians(latitude)))) AS distance_km',
+                    [$userLat, $userLng, $userLat]
+                )
+                ->whereRaw('(6371 * acos(cos(radians(?)) * cos(radians(latitude)) *
+                    cos(radians(longitude) - radians(?)) + sin(radians(?)) *
+                    sin(radians(latitude)))) <= 20', // 限制在 20 公里內
+                    [$userLat, $userLng, $userLat]
+                )
+                ->orderBy('distance_km', 'asc');
+            } else {
+                $query->orderBy('is_featured', 'desc')
+                       ->orderBy('created_at', 'desc');
+            }
+
+            $stores = $query->paginate(12);
 
             return [
-                'stores' => $stores->map(function ($store) {
-                    return [
+                'stores' => $stores->map(function ($store) use ($nearby, $userLat, $userLng) {
+                    $storeData = [
                         'id' => $store->id,
                         'name' => $store->name,
                         'store_url' => $store->store_url,
@@ -148,6 +172,17 @@ class StoreController extends Controller
                         'rating' => $store->getAverageRating(),
                         'created_at' => $store->created_at->format('Y-m-d'),
                     ];
+
+                    // 如果有附近篩選且有距離資訊，則添加距離資訊
+                    if ($nearby === 'true' && isset($store->distance_km)) {
+                        if ($store->distance_km < 1) {
+                            $storeData['distance'] = round($store->distance_km * 1000) . ' 公尺';
+                        } else {
+                            $storeData['distance'] = round($store->distance_km, 1) . ' 公里';
+                        }
+                    }
+
+                    return $storeData;
                 }),
                 'pagination' => [
                     'current_page' => $stores->currentPage(),
@@ -295,6 +330,8 @@ class StoreController extends Controller
         $bounds = $request->get('bounds'); // 地圖邊界座標
         $city = $request->get('city');
         $area = $request->get('area');
+        $userLat = $request->get('user_lat'); // 使用者緯度
+        $userLng = $request->get('user_lng'); // 使用者經度
 
         $query = Store::where('is_active', true)
                       ->whereNotNull('latitude')
@@ -314,14 +351,32 @@ class StoreController extends Controller
                   ->whereBetween('longitude', [$bounds['west'], $bounds['east']]);
         }
 
+        // 如果有使用者位置，則計算距離並按距離排序
+        if ($userLat && $userLng) {
+            // 使用 Haversine 公式計算距離
+            $query->selectRaw('*,
+                (6371 * acos(cos(radians(?)) * cos(radians(latitude)) *
+                cos(radians(longitude) - radians(?)) + sin(radians(?)) *
+                sin(radians(latitude)))) AS distance_km',
+                [$userLat, $userLng, $userLat]
+            )
+            ->whereRaw('(6371 * acos(cos(radians(?)) * cos(radians(latitude)) *
+                cos(radians(longitude) - radians(?)) + sin(radians(?)) *
+                sin(radians(latitude)))) <= 50', // 限制在 50 公里內
+                [$userLat, $userLng, $userLat]
+            )
+            ->orderBy('distance_km', 'asc');
+        } else {
+            $query->orderBy('is_featured', 'desc')
+                   ->orderBy('created_at', 'desc');
+        }
+
         $stores = $query->withCount(['orders', 'menuItems'])
-                       ->orderBy('is_featured', 'desc')
-                       ->orderBy('created_at', 'desc')
                        ->limit(100) // 地圖模式限制數量
                        ->get();
 
-        $data = $stores->map(function ($store) {
-            return [
+        $data = $stores->map(function ($store) use ($userLat, $userLng) {
+            $storeData = [
                 'id' => $store->id,
                 'name' => $store->name,
                 'store_url' => $store->store_url,
@@ -338,6 +393,17 @@ class StoreController extends Controller
                 'is_featured' => $store->is_featured,
                 'rating' => $store->getAverageRating(),
             ];
+
+            // 如果有距離資訊，則格式化距離顯示
+            if (isset($store->distance_km)) {
+                if ($store->distance_km < 1) {
+                    $storeData['distance'] = round($store->distance_km * 1000) . ' 公尺';
+                } else {
+                    $storeData['distance'] = round($store->distance_km, 1) . ' 公里';
+                }
+            }
+
+            return $storeData;
         });
 
         return response()->json(['stores' => $data]);
