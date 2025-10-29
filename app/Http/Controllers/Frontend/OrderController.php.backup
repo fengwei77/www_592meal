@@ -1,0 +1,259 @@
+<?php
+
+namespace App\Http\Controllers\Frontend;
+
+use App\Http\Controllers\Controller;
+use App\Models\MenuItem;
+use App\Models\Order;
+use App\Models\OrderItem;
+use App\Services\CartService;
+use Illuminate\Http\Request;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Str;
+use Illuminate\View\View;
+
+class OrderController extends Controller
+{
+    /**
+     * 顯示結帳頁面
+     */
+    public function create(Request $request, $store_slug)
+    {
+        // 從路由參數獲取店家
+        $store = \App\Models\Store::where('store_slug_name', $store_slug)
+                                    ->where('is_active', true)
+                                    ->firstOrFail();
+
+        $cartService = new CartService();
+
+        if ($cartService->isEmpty()) {
+            return redirect()->route('frontend.store.detail', $store_slug)
+                ->with('warning', '購物車是空的，請先添加商品');
+        }
+
+        // 使用 CartService 驗證並獲取購物車內容
+        $validation = $cartService->validateCart($store->id);
+
+        if (!$validation['is_valid']) {
+            $warningMessage = '購物車中的商品有問題：';
+            foreach ($validation['invalid_items'] as $invalidItem) {
+                $warningMessage .= "\n• {$invalidItem['name']} - {$invalidItem['reason']}";
+            }
+
+            return redirect()->route('frontend.cart.index')
+                ->with('warning', $warningMessage);
+        }
+
+        $cartItems = $validation['valid_items'];
+        $total = $validation['total_amount'];
+
+        return view('frontend.order.create', compact('store', 'cartItems', 'total'));
+    }
+
+    /**
+     * 建立訂單
+     */
+    public function store(Request $request, $store_slug)
+    {
+        $request->validate([
+            'customer_name' => 'required|string|max:100',
+            'customer_phone' => 'nullable|string|max:20',
+            'notes' => 'nullable|string|max:500',
+        ], [
+            'customer_name.required' => '請填寫您的姓名',
+            'customer_name.max' => '姓名不能超過 100 個字元',
+            'customer_phone.max' => '電話不能超過 20 個字元',
+            'notes.max' => '備註不能超過 500 個字元',
+        ]);
+
+        // 從路由參數獲取店家
+        $store = \App\Models\Store::where('store_slug_name', $store_slug)
+                                    ->where('is_active', true)
+                                    ->firstOrFail();
+
+        $cartService = new CartService();
+
+        if ($cartService->isEmpty()) {
+            return redirect()->route('frontend.store.detail', $store_slug)
+                ->with('error', '購物車是空的');
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // 驗證購物車
+            $validation = $cartService->validateCart($store->id);
+
+            if (!$validation['is_valid']) {
+                DB::rollBack();
+                return back()->with('error', '購物車中包含無效商品，請重新確認');
+            }
+
+            // 檢查是否為預訂單
+            $scheduleInfo = $store->getOrderScheduleInfo();
+
+            // 準備訂單資料
+            $orderData = [
+                'store_id' => $store->id,
+                'order_number' => $this->generateOrderNumber(),
+                'customer_name' => $request->input('customer_name'),
+                'customer_phone' => $request->input('customer_phone'),
+                'notes' => $request->input('notes'),
+                'status' => 'pending',
+                'total_amount' => $validation['total_amount'],
+                'is_scheduled_order' => $scheduleInfo['is_scheduled'],
+                'scheduled_for' => $scheduleInfo['scheduled_date'],
+            ];
+
+            // 如果有 LINE 登入資訊，添加到訂單
+            if (session('line_logged_in') && session('line_user')) {
+                $lineUser = session('line_user');
+                $orderData['line_user_id'] = $lineUser['user_id'] ?? null;
+                $orderData['line_display_name'] = $lineUser['display_name'] ?? null;
+                $orderData['line_picture_url'] = $lineUser['picture_url'] ?? null;
+            }
+
+            // 建立訂單
+            $order = Order::create($orderData);
+
+            // 建立訂單項目
+            foreach ($validation['valid_items'] as $item) {
+                OrderItem::create([
+                    'order_id' => $order->id,
+                    'menu_item_id' => $item['id'],
+                    'quantity' => $item['quantity'],
+                    'unit_price' => $item['price'],
+                    'total_price' => $item['subtotal'],
+                ]);
+            }
+
+            // 清空購物車
+            $cartService->clear();
+
+            DB::commit();
+
+            // 準備成功訊息
+            $successMessage = $scheduleInfo['is_scheduled']
+                ? '訂單已送出！' . $scheduleInfo['message']
+                : '訂單建立成功！';
+
+            return redirect()->route('frontend.order.confirmed', ['store_slug' => $store_slug, 'order' => $order])
+                ->with('success', $successMessage)
+                ->with('schedule_info', $scheduleInfo);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            \Log::error('訂單建立失敗', [
+                'error' => $e->getMessage(),
+                'request' => $request->all(),
+            ]);
+
+            return back()->with('error', '訂單建立失敗，請稍後再試');
+        }
+    }
+
+    /**
+     * 顯示用戶的訂單歷史列表 - 新版本
+     */
+    public function index(Request $request)
+    {
+        // 檢查是否已登入 LINE
+        if (!session('line_logged_in') || !session('line_user')) {
+            return redirect()->route('login')
+                ->with('error', '請先登入 LINE 以查看您的訂單');
+        }
+
+        $lineUserId = session('line_user.user_id');
+
+        // 查詢該用戶的所有訂單，按建立時間倒序排列
+        $orders = Order::where('line_user_id', $lineUserId)
+            ->with(['store', 'orderItems.menuItem'])
+            ->orderBy('created_at', 'desc')
+            ->paginate(10);
+
+        return view('frontend.order.index', compact('orders'));
+    }
+
+    /**
+     * 顯示訂單詳情
+     */
+    public function show(Request $request, $orderNumber)
+    {
+        // 檢查是否已登入 LINE
+        if (!session('line_logged_in') || !session('line_user')) {
+            return redirect()->route('login')
+                ->with('error', '請先登入 LINE');
+        }
+
+        $lineUserId = session('line_user.user_id');
+
+        // 查詢訂單並確認屬於當前用戶
+        $order = Order::where('order_number', $orderNumber)
+            ->where('line_user_id', $lineUserId)
+            ->with(['store', 'orderItems.menuItem'])
+            ->firstOrFail();
+
+        return view('frontend.order.show', compact('order'));
+    }
+
+    /**
+     * 顯示訂單確認頁面
+     */
+    public function confirmed(Request $request, $store_slug, Order $order): View
+    {
+        // 從路由參數獲取店家
+        $store = \App\Models\Store::where('store_slug_name', $store_slug)
+                                    ->where('is_active', true)
+                                    ->firstOrFail();
+
+        // 確認訂單屬於當前店家
+        if ($order->store_id !== $store->id) {
+            abort(404, '訂單不存在');
+        }
+
+        // 載入訂單項目
+        $order->load(['orderItems.menuItem']);
+
+        return view('frontend.order.confirmed', compact('store', 'order'));
+    }
+
+    /**
+     * 生成訂單編號
+     */
+    private function generateOrderNumber(): string
+    {
+        do {
+            $orderNumber = 'ORD' . date('Ymd') . strtoupper(Str::random(6));
+        } while (Order::where('order_number', $orderNumber)->exists());
+
+        return $orderNumber;
+    }
+
+    /**
+     * API: 檢查訂單狀態
+     */
+    public function checkStatus(Request $request, $orderNumber)
+    {
+        $store = $request->get('current_store');
+
+        $order = Order::where('order_number', $orderNumber)
+                      ->where('store_id', $store->id)
+                      ->first();
+
+        if (!$order) {
+            return response()->json([
+                'error' => '訂單不存在'
+            ], 404);
+        }
+
+        return response()->json([
+            'order_number' => $order->order_number,
+            'status' => $order->status,
+            'total_amount' => $order->total_amount,
+            'created_at' => $order->created_at->format('Y-m-d H:i:s'),
+        ]);
+    }
+}

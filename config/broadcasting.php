@@ -77,6 +77,15 @@ return [
             'driver' => 'null',
         ],
 
+        'push' => [
+            'driver' => 'push',
+            'vapid' => [
+                'subject' => env('VAPID_SUBJECT', 'mailto:admin@592meal.com'),
+                'public_key' => env('VAPID_PUBLIC_KEY', 'BD7y3xvsnG7PK4t2NRbIci5oBFSkB6-mniFjRxhywHQXi-ylnp1y4EO_es9Yx5CJYDo-KLWtw5fiEGHYHyKC_S4'),
+                'private_key' => env('VAPID_PRIVATE_KEY', 'eyP8z6Nzk7PUidz6Ufkkzy5OJxI4Rge2MEnL7FGEsug'),
+            ],
+        ],
+
     ],
 
 ];

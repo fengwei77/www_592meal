@@ -8,12 +8,14 @@
     "require": {
         "php": "^8.2",
         "filament/filament": "^4.1",
+        "filament/spatie-laravel-media-library-plugin": "^4.1",
         "laravel/framework": "^12.0",
         "laravel/reverb": "^1.6",
         "laravel/tinker": "^2.10.1",
-        "mews/captcha": "^3.4",
+        "minishlink/web-push": "^9.0",
         "pragmarx/google2fa-laravel": "^2.3",
         "predis/predis": "^3.2",
+        "spatie/laravel-medialibrary": "^11.15",
         "spatie/laravel-permission": "^6.21"
     },
     "require-dev": {
@@ -24,6 +26,7 @@
         "mockery/mockery": "^1.6",
         "nunomaduro/collision": "^8.6",
         "pestphp/pest": "^3.8",
+        "pestphp/pest-plugin-livewire": "^3.0",
         "phpunit/phpunit": "^11.5"
     },
     "autoload": {
@@ -31,7 +34,10 @@
             "App\\": "app/",
             "Database\\Factories\\": "database/factories/",
             "Database\\Seeders\\": "database/seeders/"
-        }
+        },
+        "files": [
+            "app/helpers.php"
+        ]
     },
     "autoload-dev": {
         "psr-4": {

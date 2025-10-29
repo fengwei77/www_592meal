@@ -1,6 +1,10 @@
 @extends('layouts.app')
 
 @section('content')
+{{-- Cache control meta tags --}}
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <!-- Flash Messages -->
         @if(session('status'))
@@ -17,6 +21,9 @@
             </div>
         @endif
 
+        <!-- Debug timestamp - remove in production -->
+        <div style="display:none;" id="page-timestamp">{{ now()->format('Y-m-d H:i:s.u') }}</div>
+
         <!-- Hero Section -->
         <div class="text-center mb-12">
             <h1 class="text-5xl font-bold text-gray-900 mb-4">
@@ -26,10 +33,15 @@
                 美味餐點,LINE 一下即可訂購
             </p>
 
-            @guest('customer')
+            @php
+                $isLoggedInCustomer = Auth::guard('customer')->check();
+                $customer = Auth::guard('customer')->user();
+            @endphp
+
+            @if(!$isLoggedInCustomer)
                 <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
                     <!-- 顧客登入 -->
-                    <a href="{{ route('login') }}"
+                    <a href="{{ route('line.login') }}"
                        class="inline-flex items-center px-6 py-3 text-white font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
                        style="background-color: #06C755;">
                         <svg class="w-6 h-6 mr-2" viewBox="0 0 24 24" fill="currentColor">
@@ -39,20 +51,30 @@
                     </a>
                 </div>
             @else
-                <div class="text-center">
-                    <p class="text-2xl text-gray-700 mb-4">
-                        歡迎回來,{{ auth('customer')->user()->name }}!
-                    </p>
-                    <div class="flex gap-4 justify-center">
-                        <form action="{{ route('logout') }}" method="POST">
-                            @csrf
-                            <button type="submit" class="text-gray-600 hover:text-gray-800 underline">
-                                登出
-                            </button>
-                        </form>
+                <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                    <div class="text-center sm:text-right">
+                        <p class="text-2xl text-gray-700 mb-2">
+                            歡迎回來,{{ $customer->name ?? '用戶' }}!
+                        </p>
+                        <p class="text-sm text-gray-600">
+                            準備好點餐了嗎？
+                        </p>
                     </div>
+                    <a href="{{ route('frontend.stores.index') }}"
+                       class="inline-flex items-center px-6 py-3 text-white font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 bg-blue-600 hover:bg-blue-700">
+                        <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                        </svg>
+                        前往訂餐
+                    </a>
+                    <form action="{{ route('logout') }}" method="POST" class="inline">
+                        @csrf
+                        <button type="submit" class="text-gray-600 hover:text-gray-800 underline text-sm">
+                            登出
+                        </button>
+                    </form>
                 </div>
-            @endguest
+            @endif
         </div>
 
         <!-- Features Section -->

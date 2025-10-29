@@ -1,0 +1,857 @@
+@extends('frontend.layouts.app')
+
+@section('title', '店家清單 - 592美食訂餐平台')
+@section('description', '發現附近最棒的美食店家，支援地圖瀏覽、地區篩選和關鍵字搜尋')
+
+@section('styles')
+<style>
+    /* 統一的設計系統 */
+    :root {
+        --primary-color: #3b82f6;
+        --primary-hover: #2563eb;
+        --secondary-color: #8b5cf6;
+        --success-color: #10b981;
+        --warning-color: #f59e0b;
+        --error-color: #ef4444;
+        --gray-50: #f9fafb;
+        --gray-100: #f3f4f6;
+        --gray-200: #e5e7eb;
+        --gray-300: #d1d5db;
+        --gray-400: #9ca3af;
+        --gray-500: #6b7280;
+        --gray-600: #4b5563;
+        --gray-700: #374151;
+        --gray-800: #1f2937;
+        --gray-900: #111827;
+        --border-radius: 0.75rem;
+        --border-radius-lg: 1rem;
+        --border-radius-xl: 1.5rem;
+        --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    }
+
+    /* 全域樣式重置 */
+    .store-grid {
+        display: grid;
+        gap: 2rem;
+        grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    }
+
+    /* 美化滾動條 */
+    ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: var(--gray-100);
+        border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: var(--gray-400);
+        border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: var(--gray-500);
+    }
+
+    /* 動畫效果 */
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes slideDown {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+
+    .animate-fadeIn {
+        animation: fadeIn 0.6s ease-out;
+    }
+
+    .animate-slideDown {
+        animation: slideDown 0.3s ease-out;
+    }
+
+    .animate-pulse {
+        animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+
+    /* 視圖切換標籤 */
+    .view-tabs {
+        display: flex;
+        background: white;
+        border-radius: var(--border-radius-xl);
+        padding: 0.25rem;
+        margin-bottom: 2rem;
+        box-shadow: var(--shadow);
+        border: 1px solid var(--gray-200);
+    }
+
+    .view-tab {
+        flex: 1;
+        padding: 0.875rem 1.25rem;
+        border: none;
+        background: transparent;
+        border-radius: var(--border-radius);
+        font-weight: 600;
+        color: var(--gray-600);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+
+    .view-tab:hover {
+        background: var(--gray-50);
+        color: var(--gray-800);
+    }
+
+    .view-tab.active {
+        background: var(--primary-color);
+        color: white;
+        box-shadow: var(--shadow-sm);
+    }
+
+    /* 統計資訊卡片 - 升級版設計 */
+    .stats-section {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+        position: relative;
+        /* 自動高度調整 */
+        align-items: start;
+        min-height: auto;
+    }
+
+    .stat-card {
+        background: white;
+        border-radius: var(--border-radius-xl);
+        padding: 2rem 1.5rem;
+        text-align: center;
+        box-shadow: var(--shadow);
+        border: 1px solid var(--gray-100);
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        position: relative;
+        overflow: hidden;
+        cursor: pointer;
+        /* 確保卡片高度一致 */
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        min-height: 140px;
+    }
+
+    /* 背景漸層裝飾 */
+    .stat-card::after {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(circle, rgba(59, 130, 246, 0.05) 0%, transparent 70%);
+        transition: all 0.4s ease;
+        pointer-events: none;
+    }
+
+    /* 頂部漸層條 */
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+        transform: scaleX(0);
+        transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        transform-origin: left;
+    }
+
+    .stat-card:hover::before {
+        transform: scaleX(1);
+    }
+
+    .stat-card:hover {
+        transform: translateY(-8px) scale(1.02);
+        box-shadow: var(--shadow-xl);
+        border-color: var(--primary-color);
+    }
+
+    .stat-card:hover::after {
+        top: -30%;
+        right: -30%;
+    }
+
+    /* 數字樣式 - 添加漸層和動畫 */
+    .stat-number {
+        font-size: 2.75rem;
+        font-weight: 900;
+        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 0.75rem;
+        line-height: 1;
+        position: relative;
+        transition: all 0.3s ease;
+        text-shadow: 0 2px 4px rgba(59, 130, 246, 0.1);
+    }
+
+    .stat-card:hover .stat-number {
+        transform: scale(1.05);
+        filter: brightness(1.1);
+    }
+
+    /* 標籤樣式 - 更現代的排版 */
+    .stat-label {
+        color: var(--gray-600);
+        font-size: 0.95rem;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        position: relative;
+        transition: all 0.3s ease;
+    }
+
+    .stat-card:hover .stat-label {
+        color: var(--gray-800);
+        transform: translateY(-2px);
+    }
+
+    /* 圖標裝飾 */
+    .stat-icon {
+        position: absolute;
+        top: 1.5rem;
+        right: 1.5rem;
+        width: 2.5rem;
+        height: 2.5rem;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.25rem;
+        opacity: 0.8;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 8px rgba(59, 130, 246, 0.2);
+    }
+
+    .stat-card:hover .stat-icon {
+        opacity: 1;
+        transform: rotate(10deg) scale(1.1);
+        box-shadow: 0 6px 12px rgba(59, 130, 246, 0.3);
+    }
+
+    /* 特殊樣式變體 */
+    .stat-card.featured {
+        background: linear-gradient(135deg, #fff, #f8fafc);
+    }
+
+    .stat-card.featured::before {
+        background: linear-gradient(90deg, var(--secondary-color), var(--success-color));
+    }
+
+    .stat-card.cities {
+        background: linear-gradient(135deg, #fff, #fefce8);
+    }
+
+    .stat-card.cities::before {
+        background: linear-gradient(90deg, var(--warning-color), var(--error-color));
+    }
+
+    .stat-card.filtered {
+        background: linear-gradient(135deg, #fff, #f0f9ff);
+    }
+
+    .stat-card.filtered::before {
+        background: linear-gradient(90deg, var(--success-color), var(--primary-color));
+    }
+
+    /* 微光動畫效果 */
+    @keyframes shimmer {
+        0% {
+            transform: translateX(-100%);
+        }
+        100% {
+            transform: translateX(100%);
+        }
+    }
+
+    .stat-card.loading::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+        transform: translateX(-100%);
+        animation: shimmer 2s infinite;
+    }
+
+    /* 空狀態設計 */
+    .empty-state {
+        text-align: center;
+        padding: 5rem 2rem;
+        color: var(--gray-600);
+        background: white;
+        border-radius: var(--border-radius-xl);
+        box-shadow: var(--shadow);
+        border: 1px solid var(--gray-100);
+    }
+
+    .empty-state__icon {
+        font-size: 4rem;
+        margin-bottom: 1.5rem;
+        opacity: 0.4;
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .empty-state__title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--gray-800);
+        margin-bottom: 0.75rem;
+    }
+
+    .empty-state__description {
+        margin-bottom: 2rem;
+        line-height: 1.6;
+        color: var(--gray-600);
+    }
+
+    /* 響應式設計 - 升級版 */
+    @media (max-width: 1024px) {
+        .stats-section {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.25rem;
+        }
+
+        .stat-card {
+            padding: 1.75rem 1.25rem;
+        }
+
+        .stat-number {
+            font-size: 2.25rem;
+        }
+
+        .stat-icon {
+            width: 2.25rem;
+            height: 2.25rem;
+            font-size: 1.1rem;
+            top: 1.25rem;
+            right: 1.25rem;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .store-grid {
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+
+        .stats-section {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-card {
+            padding: 1.5rem 1rem;
+            min-height: 140px;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            letter-spacing: 0.025em;
+        }
+
+        .stat-icon {
+            width: 2rem;
+            height: 2rem;
+            font-size: 1rem;
+            top: 1rem;
+            right: 1rem;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px) scale(1.01);
+        }
+    }
+
+    @media (max-width: 640px) {
+        .stats-section {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+
+        .stat-card {
+            padding: 1.75rem 1.25rem;
+            min-height: 120px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .stat-number {
+            font-size: 2.25rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+        }
+
+        .stat-icon {
+            position: relative;
+            top: auto;
+            right: auto;
+            margin-bottom: 1rem;
+            width: 3rem;
+            height: 3rem;
+            font-size: 1.5rem;
+        }
+
+        .view-tab {
+            padding: 0.75rem 1rem;
+            font-size: 0.9rem;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .stat-card:hover .stat-number {
+            transform: scale(1.02);
+        }
+    }
+
+    /* 超小螢幕優化 */
+    @media (max-width: 480px) {
+        .stats-section {
+            gap: 0.875rem;
+        }
+
+        .stat-card {
+            padding: 1.5rem 1rem;
+            min-height: 100px;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+        }
+
+        .stat-icon {
+            width: 2.5rem;
+            height: 2.5rem;
+            font-size: 1.25rem;
+            margin-bottom: 0.75rem;
+        }
+    }
+
+    /* 載入骨架屏 */
+    .skeleton {
+        background: linear-gradient(90deg, var(--gray-200) 25%, var(--gray-300) 50%, var(--gray-200) 75%);
+        background-size: 200% 100%;
+        animation: loading 1.5s infinite;
+        border-radius: var(--border-radius);
+    }
+
+    @keyframes loading {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+    }
+
+    /* 文字截斷工具類 */
+    .line-clamp-2 {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .line-clamp-3 {
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    /* 焦點樣式優化 */
+    *:focus {
+        outline: none;
+    }
+
+    *:focus-visible {
+        outline: 2px solid var(--primary-color);
+        outline-offset: 2px;
+        border-radius: var(--border-radius);
+    }
+</style>
+@endsection
+
+@section('content')
+<div class="container mx-auto px-4 py-8">
+    <!-- 頁面標題 -->
+    <div class="text-center mb-8">
+        <h1 class="text-4xl font-bold text-gray-900 mb-4">發現美食店家</h1>
+        <p class="text-xl text-gray-600">探索附近的優質餐廳，開始美食之旅</p>
+    </div>
+
+    <!-- 搜尋區域 -->
+    @include('frontend.stores.partials.search-bar')
+
+    <!-- 統計資訊 - 升級版設計 -->
+    <div class="stats-section grid gap-4 grid-cols-2 lg:grid-cols-4">
+
+    <div class="stat-card bg-white p-6 rounded-lg shadow-md">
+        <div class="flex items-baseline justify-center space-x-2">
+            <div class="stat-icon text-xl">🏪</div>
+            <div class="stat-number text-2xl font-bold" data-target="{{ $stats['total_stores'] ?? 0 }}">0</div>
+            <div class="stat-label text-sm text-gray-500">店家總數</div>
+        </div>
+    </div>
+
+    <div class="stat-card featured bg-blue-100 p-6 rounded-lg shadow-md">
+        <div class="flex items-baseline justify-center space-x-2">
+            <div class="stat-icon text-xl">⭐</div>
+            <div class="stat-number text-2xl font-bold text-blue-800" data-target="{{ $stats['featured_stores'] ?? 0 }}">0</div>
+            <div class="stat-label text-sm text-blue-600">推薦店家</div>
+        </div>
+    </div>
+
+    <div class="stat-card cities bg-white p-6 rounded-lg shadow-md">
+        <div class="flex items-baseline justify-center space-x-2">
+            <div class="stat-icon text-xl">🏙️</div>
+            <div class="stat-number text-2xl font-bold" data-target="{{ $stats['cities_count'] ?? 0 }}">0</div>
+            <div class="stat-label text-sm text-gray-500">服務城市</div>
+        </div>
+    </div>
+
+    <div class="stat-card filtered bg-white p-6 rounded-lg shadow-md">
+        <div class="flex items-baseline justify-center space-x-2">
+            <div class="stat-icon text-xl">🎯</div>
+            <div class="stat-number text-2xl font-bold" data-target="{{ $stores->total() }}">0</div>
+            <div class="stat-label text-sm text-gray-500">符合條件</div>
+        </div>
+    </div>
+
+</div>
+
+    <!-- 篩選器 -->
+    @include('frontend.stores.partials.filters')
+
+    <!-- 檢視模式切換 -->
+    <div class="view-tabs">
+        <button class="view-tab {{ $view == 'list' ? 'active' : '' }}" onclick="switchView('list')">
+            📋 列表模式
+        </button>
+        <button class="view-tab {{ $view == 'map' ? 'active' : '' }}" onclick="switchView('map')">
+            🗺️ 地圖模式
+        </button>
+    </div>
+
+    <!-- 店家列表 -->
+    <div id="list-view" class="{{ $view == 'map' ? 'hidden' : '' }}">
+        @if($stores->count() > 0)
+            <div class="store-grid" id="stores-container">
+                @foreach($stores as $store)
+                    @include('frontend.stores.partials.list-card', ['store' => $store])
+                @endforeach
+            </div>
+
+            <!-- 分頁 -->
+            @if($stores->hasPages())
+                <div class="mt-8 flex justify-center">
+                    {{ $stores->links() }}
+                </div>
+            @endif
+        @else
+            <div class="empty-state">
+                <div class="empty-state__icon">🍽️</div>
+                <h3 class="empty-state__title">找不到符合條件的店家</h3>
+                <p class="empty-state__description">
+                    試試調整篩選條件或使用其他關鍵字搜尋
+                </p>
+                <a href="{{ route('frontend.stores.index') }}" class="search-button">
+                    清除篩選條件
+                </a>
+            </div>
+        @endif
+    </div>
+
+    <!-- 地圖模式 -->
+    <div id="map-view" class="{{ $view != 'map' ? 'hidden' : '' }}">
+        <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+            <div id="store-map" style="height: 600px; width: 100%;">
+                <!-- 地圖將在這裡載入 -->
+            </div>
+        </div>
+    </div>
+</div>
+@endsection
+
+@section('scripts')
+<script>
+// 頁面狀態管理
+const state = {
+    currentView: '{{ $view }}',
+    currentFilters: {
+        city: '{{ request("city") }}',
+        area: '{{ request("area") }}',
+        type: '{{ request("type") }}',
+        search: '{{ request("search") }}'
+    },
+    stores: [],
+    map: null,
+    markers: []
+};
+
+// 切換檢視模式
+function switchView(view) {
+    state.currentView = view;
+
+    // 更新分頁狀態
+    document.querySelectorAll('.view-tab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    event.target.classList.add('active');
+
+    // 顯示/隱藏內容
+    if (view === 'list') {
+        document.getElementById('list-view').classList.remove('hidden');
+        document.getElementById('map-view').classList.add('hidden');
+        updateURL({ view: null });
+    } else {
+        document.getElementById('list-view').classList.add('hidden');
+        document.getElementById('map-view').classList.remove('hidden');
+        updateURL({ view: 'map' });
+        initMap();
+    }
+}
+
+// 更新URL參數
+function updateURL(params) {
+    const url = new URL(window.location);
+
+    // 清除現有參數
+    Object.keys(state.currentFilters).forEach(key => {
+        if (!state.currentFilters[key]) {
+            url.searchParams.delete(key);
+        }
+    });
+
+    // 設置新參數
+    Object.entries(state.currentFilters).forEach(([key, value]) => {
+        if (value) {
+            url.searchParams.set(key, value);
+        }
+    });
+
+    // 設置檢視模式
+    if (params.view) {
+        url.searchParams.set('view', params.view);
+    } else {
+        url.searchParams.delete('view');
+    }
+
+    // 更新瀏覽器歷史
+    if (params.replace) {
+        window.history.replaceState({}, '', url);
+    } else {
+        window.history.pushState({}, '', url);
+    }
+}
+
+// 初始化地圖
+function initMap() {
+    if (state.map) return;
+
+    // 使用 Leaflet.js (開源地圖庫)
+    const mapElement = document.getElementById('store-map');
+    if (!mapElement) return;
+
+    // 初始化地圖 - 台灣中心
+    state.map = L.map('store-map').setView([23.8, 121.0], 8);
+
+    // 加入地圖圖層
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(state.map);
+
+    // 載入店家資料並標記
+    loadMapStores();
+}
+
+// 載入地圖店家資料
+async function loadMapStores() {
+    try {
+        const params = new URLSearchParams();
+        Object.entries(state.currentFilters).forEach(([key, value]) => {
+            if (value) params.set(key, value);
+        });
+
+        const response = await fetch(`/api/stores/map?${params}`);
+        const data = await response.json();
+
+        // 清除現有標記
+        state.markers.forEach(marker => state.map.removeLayer(marker));
+        state.markers = [];
+
+        // 添加新標記
+        data.stores.forEach(store => {
+            const marker = L.marker([store.latitude, store.longitude])
+                .addTo(state.map)
+                .bindPopup(`
+                    <div style="min-width: 200px;">
+                        <img src="${store.logo_url}" style="width: 60px; height: 60px; border-radius: 8px; object-fit: cover;">
+                        <h4 style="margin: 8px 0 4px 0;">${store.name}</h4>
+                        <p style="margin: 0 0 4px 0; color: #666; font-size: 14px;">${store.address}</p>
+                        <p style="margin: 0 0 8px 0; color: ${store.is_open ? '#10b981' : '#6b7280'}; font-size: 13px;">
+                            ${store.is_open ? '🟢 ' : '🔴 '}${store.open_hours_text}
+                        </p>
+                        <a href="${store.store_url}"
+                           class="btn btn-primary btn-sm" style="background: #3b82f6; color: white; padding: 4px 12px; border-radius: 4px; text-decoration: none; display: inline-block;">
+                            進入店家
+                        </a>
+                    </div>
+                `);
+
+            state.markers.push(marker);
+        });
+
+        // 自動調整地圖範圍
+        if (state.markers.length > 0) {
+            const group = new L.featureGroup(state.markers);
+            state.map.fitBounds(group.getBounds().pad(0.1));
+        }
+
+    } catch (error) {
+        console.error('載入地圖店家失敗:', error);
+    }
+}
+
+// 縣市變更時更新區域選項
+document.getElementById('city-filter')?.addEventListener('change', function(e) {
+    const city = e.target.value;
+    const areaFilter = document.getElementById('area-filter');
+
+    if (!city) {
+        // 清空區域選項
+        areaFilter.innerHTML = '<option value="">全部區域</option>';
+        return;
+    }
+
+    // 載入該縣市的區域
+    fetch(`/api/stores/filters`)
+        .then(response => response.json())
+        .then(data => {
+            const areas = data.areas.filter(area => {
+                // 這裡可以添加邏輯過濾出該縣市的區域
+                return true; // 暫時顯示所有區域
+            });
+
+            areaFilter.innerHTML = '<option value="">全部區域</option>';
+            areas.forEach(area => {
+                areaFilter.innerHTML += `<option value="${area}">${area}</option>`;
+            });
+        })
+        .catch(error => console.error('載入區域失敗:', error));
+});
+
+// 數字動畫效果
+function animateNumbers() {
+    const statNumbers = document.querySelectorAll('.stat-number[data-target]');
+
+    statNumbers.forEach(stat => {
+        const target = parseInt(stat.getAttribute('data-target'));
+        const duration = 2000; // 2秒動畫
+        const start = 0;
+        const increment = target / (duration / 16); // 60fps
+        let current = start;
+
+        const updateNumber = () => {
+            current += increment;
+            if (current < target) {
+                stat.textContent = Math.floor(current).toLocaleString();
+                requestAnimationFrame(updateNumber);
+            } else {
+                stat.textContent = target.toLocaleString();
+            }
+        };
+
+        // 延遲啟動，創造連續效果
+        setTimeout(() => {
+            updateNumber();
+        }, Array.from(statNumbers).indexOf(stat) * 100);
+    });
+}
+
+// 頁面載入完成後初始化
+document.addEventListener('DOMContentLoaded', function() {
+    // 啟動數字動畫
+    animateNumbers();
+
+    // 如果是地圖模式，初始化地圖
+    if (state.currentView === 'map') {
+        initMap();
+    }
+
+    // 處理瀏覽器後退/前進
+    window.addEventListener('popstate', function() {
+        const params = new URLSearchParams(window.location.search);
+        const view = params.get('view') || 'list';
+
+        if (view !== state.currentView) {
+            switchView(view);
+        }
+    });
+});
+
+// 載入 Leaflet.js 地圖庫 (如果尚未載入)
+if (typeof L === 'undefined') {
+    const script = document.createElement('script');
+    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    script.onload = function() {
+        // 載入 Leaflet CSS
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+        document.head.appendChild(link);
+
+        // 如果是地圖模式，初始化地圖
+        if (state.currentView === 'map') {
+            initMap();
+        }
+    };
+    document.head.appendChild(script);
+}
+</script>
+@endsection

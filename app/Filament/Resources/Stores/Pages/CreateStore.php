@@ -15,7 +15,42 @@ class CreateStore extends CreateRecord
         $data['user_id'] = Auth::id();
         $data['subdomain'] = $this->generateUniqueSubdomain($data['name']);
 
+        // 處理 store_slug_name 欄位
+        if (isset($data['store_slug_name'])) {
+            // 判斷是否為空
+            if (empty(trim($data['store_slug_name']))) {
+                // 如果為空，先設為 null，保存後再處理
+                $data['store_slug_name'] = null;
+            } else {
+                // 清理使用者輸入的 slug
+                $cleanedSlug = strtolower(preg_replace('/[^a-zA-Z0-9-]/', '-', $data['store_slug_name']));
+
+                // 確保唯一性
+                $originalSlug = $cleanedSlug;
+                $counter = 1;
+
+                while (\App\Models\Store::where('store_slug_name', $cleanedSlug)->exists()) {
+                    $cleanedSlug = $originalSlug . '-' . $counter;
+                    $counter++;
+                }
+
+                $data['store_slug_name'] = $cleanedSlug;
+            }
+        }
+
         return $data;
+    }
+
+    protected function afterCreate(): void
+    {
+        parent::afterCreate();
+
+        // 如果 store_slug_name 為空，生成預設格式
+        if (empty($this->record->store_slug_name)) {
+            $this->record->update([
+                'store_slug_name' => 's' . str_pad($this->record->id, 6, '0', STR_PAD_LEFT)
+            ]);
+        }
     }
 
     /**

@@ -7,11 +7,14 @@
 
     <title>{{ $title ?? config('app.name', '592Meal') }}</title>
 
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <!-- Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+    <!-- Custom Styles -->
+    @stack('styles')
 </head>
 <body class="antialiased bg-gray-50 flex flex-col min-h-screen">
     <!-- Navigation Bar -->
@@ -27,29 +30,39 @@
 
                 <!-- User Menu -->
                 <div class="flex items-center">
-                    @auth('customer')
+                    @if(session('line_logged_in') && session('line_user'))
+                        @php
+                            $lineUser = session('line_user');
+                        @endphp
                         <!-- Authenticated Customer -->
                         <div class="flex items-center space-x-4">
                             <!-- Customer Avatar & Name -->
                             <div class="flex items-center">
-                                @if(auth('customer')->user()->avatar_url)
-                                    <img src="{{ auth('customer')->user()->avatar_url }}"
-                                         alt="{{ auth('customer')->user()->name }}"
+                                @if(!empty($lineUser['picture_url']))
+                                    <img src="{{ $lineUser['picture_url'] }}"
+                                         alt="{{ $lineUser['display_name'] }}"
                                          class="w-10 h-10 rounded-full border-2 border-gray-200">
                                 @else
                                     <div class="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center border-2 border-gray-200">
                                         <span class="text-gray-600 font-semibold text-sm">
-                                            {{ mb_substr(auth('customer')->user()->name, 0, 2) }}
+                                            {{ mb_substr($lineUser['display_name'] ?? '用戶', 0, 2) }}
                                         </span>
                                     </div>
                                 @endif
                                 <span class="ml-3 text-sm font-medium text-gray-700">
-                                    {{ auth('customer')->user()->name }}
+                                    {{ $lineUser['display_name'] ?? '用戶' }}
                                 </span>
                             </div>
 
+                            <!-- Notification Settings Button -->
+                            <a href="{{ route('customer.notifications.settings') }}"
+                               class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors inline-flex items-center">
+                                <i class="fas fa-bell mr-1.5"></i>
+                                通知設定
+                            </a>
+
                             <!-- Logout Button -->
-                            <form method="POST" action="{{ route('logout') }}" class="inline">
+                            <form method="POST" action="{{ route('line.logout') }}" class="inline">
                                 @csrf
                                 <button type="submit"
                                         class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
@@ -69,7 +82,7 @@
                                 LINE 登入
                             </a>
                         </div>
-                    @endauth
+                    @endif
                 </div>
             </div>
         </div>
@@ -105,5 +118,30 @@
             </p>
         </div>
     </footer>
+
+    <!-- 設定用戶資訊給 JavaScript -->
+    @if(session('line_logged_in') && session('line_user'))
+        @php
+            $lineUser = session('line_user');
+            $customer = \App\Models\Customer::where('line_id', $lineUser['user_id'])->first();
+        @endphp
+        @if($customer)
+            <script>
+                window.currentUser = {
+                    id: {{ $customer->id }},
+                    name: '{{ $lineUser['display_name'] }}',
+                    lineId: '{{ $lineUser['user_id'] }}'
+                };
+            </script>
+        @endif
+    @endif
+
+    <!-- 設定 VAPID 公鑰 -->
+    <script>
+        window.vapidPublicKey = '{{ config('broadcasting.push.vapid.public_key', 'BD7y3xvsnG7PK4t2NRbIci5oBFSkB6-mniFjRxhywHQXi-ylnp1y4EO_es9Yx5CJYDo-KLWtw5fiEGHYHyKC_S4') }}';
+    </script>
+
+    <!-- Custom Scripts -->
+    @stack('scripts')
 </body>
 </html>

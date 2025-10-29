@@ -3,6 +3,7 @@
 .env
 .env.backup
 .env.production
+.env.backup.ssl
 .phpactor.json
 .phpunit.result.cache
 /.fleet
@@ -22,3 +23,35 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# 開發用的測試檔案
+check_openssl.php
+generate_vapid_keys.php
+test_reset_url.php
+nul
+
+# 調試和臨時檔案
+public/test_*.php
+public/test_*.html
+public/debug_*.php
+public/fix_*.php
+public/*debug*
+public/*test*
+
+# 重複的儲存路徑
+D:*
+
+# 前端資源
+assets/
+
+# 臨時日誌目錄
+/storage/logs/*
+
+# 編譯緩存
+/bootstrap/cache/*
+!/bootstrap/cache/packages.php
+!/bootstrap/cache/services.php
+
+# Livewire 臨時檔案
+/storage/framework/cache/livewire/*
+/storage/framework/views/livewire-*

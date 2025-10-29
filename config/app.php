@@ -65,8 +65,6 @@ return [
     |
     */
 
-    'admin_url' => env('ADMIN_URL', env('APP_URL')),
-
     /*
     |--------------------------------------------------------------------------
     | Application Timezone
@@ -78,7 +76,7 @@ return [
     |
     */
 
-    'timezone' => 'UTC',
+    'timezone' => env('APP_TIMEZONE', 'Asia/Taipei'),
 
     /*
     |--------------------------------------------------------------------------

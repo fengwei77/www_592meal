@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 50 50">
+  <rect width="50" height="50" fill="#f3f4f6" rx="4"/>
+  <path fill="#9ca3af" d="M25 12c-7.18 0-13 5.82-13 13s5.82 13 13 13 13-5.82 13-13-5.82-13-13-13zm0 2.5c5.799 0 10.5 4.701 10.5 10.5s-4.701 10.5-10.5 10.5-10.5-4.701-10.5-10.5 4.701-10.5 10.5-10.5zm-4 6v2h8v-2h-8zm-1 4v2h10v-2h-10z"/>
+  <text x="25" y="46" font-family="sans-serif" font-size="6" fill="#6b7280" text-anchor="middle">餐點</text>
+</svg>

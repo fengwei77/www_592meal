@@ -239,7 +239,7 @@ class StoreSettings extends Page
         $user = Auth::user();
 
         // Super Admin 和 Store Owner 可以訪問
-        return $user && ($user->hasRole('Super Admin') || $user->hasRole('Store Owner'));
+        return $user && ($user->hasRole('super_admin') || $user->hasRole('store_owner'));
     }
 
     /**
@@ -254,11 +254,11 @@ class StoreSettings extends Page
         }
 
         // Super Admin 總是能看到
-        if ($user->hasRole('Super Admin')) {
+        if ($user->hasRole('super_admin')) {
             return true;
         }
 
         // Store Owner 只有在有店家時才顯示
-        return $user->hasRole('Store Owner') && $user->stores()->exists();
+        return $user->hasRole('store_owner') && $user->stores()->exists();
     }
 }

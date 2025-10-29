@@ -1,0 +1,37 @@
+/* Basic CSS for frontend */
+@import 'https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css';
+
+/* Custom styles */
+.store-primary {
+    background-color: #2563eb;
+    color: white;
+}
+
+.cart-badge {
+    background-color: #ef4444;
+    color: white;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    position: absolute;
+    top: -0.5rem;
+    right: -0.5rem;
+}
+
+.menu-item-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    transition: box-shadow 0.2s;
+}
+
+.menu-item-card:hover {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.price-tag {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #059669;
+}

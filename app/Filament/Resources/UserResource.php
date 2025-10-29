@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\UserResource\Pages;
+use App\Filament\Traits\HasResourcePermissions;
 use App\Models\User;
 use Filament\Actions;
 use Filament\Forms;
@@ -19,17 +20,23 @@ use Filament\Tables\Table;
  */
 class UserResource extends Resource
 {
+    use HasResourcePermissions;
+
     protected static ?string $model = User::class;
+
+    protected static string $viewPermission = 'view_users';
 
     protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-users';
 
-    protected static ?string $navigationLabel = '店家管理';
+    protected static string | \UnitEnum | null $navigationGroup = '系統管理';
 
-    protected static ?string $modelLabel = '店家';
+    protected static ?string $navigationLabel = '使用者管理';
 
-    protected static ?string $pluralModelLabel = '店家';
+    protected static ?string $modelLabel = '使用者';
 
-    protected static ?int $navigationSort = 1;
+    protected static ?string $pluralModelLabel = '使用者';
+
+    protected static ?int $navigationSort = 3;
 
     public static function form(Schema $schema): Schema
     {
@@ -143,8 +150,8 @@ class UserResource extends Resource
                     ->label('角色')
                     ->badge()
                     ->colors([
-                        'danger' => 'super_admin',
-                        'warning' => 'store_owner',
+                        'danger' => 'Super Admin',
+                        'warning' => 'Store Owner',
                     ]),
 
                 Tables\Columns\IconColumn::make('ip_whitelist_enabled')
@@ -211,13 +218,5 @@ class UserResource extends Resource
             'create' => Pages\CreateUser::route('/create'),
             'edit' => Pages\EditUser::route('/{record}/edit'),
         ];
-    }
-
-    /**
-     * 僅 Super Admin 可以訪問此 Resource
-     */
-    public static function canViewAny(): bool
-    {
-        return auth()->user()?->hasRole('super_admin') ?? false;
     }
 }

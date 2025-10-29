@@ -28,6 +28,14 @@ return Application::configure(basePath: dirname(__DIR__))
                 \App\Http\Middleware\CheckAdminDomain::class,
             ]);
         }
+
+        // 註冊店家租戶中間件別名
+        $middleware->alias([
+            'store.tenant' => \App\Http\Middleware\StoreTenantMiddleware::class,
+            'store.access' => \App\Http\Middleware\VerifyStoreAccess::class,
+            'staff.auth' => \App\Http\Middleware\StaffAuthenticate::class,
+            'prevent.duplicate' => \App\Http\Middleware\PreventDuplicateSubmission::class,
+        ]);
     })
     ->withSchedule(function (Schedule $schedule): void {
         // 每小時檢查並恢復超過 24 小時的臨時關閉 2FA

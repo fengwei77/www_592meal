@@ -30,8 +30,11 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->domain(parse_url(config('app.admin_url'), PHP_URL_HOST)) // 限制只在後台域名響應
             ->path('/') // 後台網域的根路徑，不使用 /admin
-            ->login()
-            ->passwordReset(\App\Filament\Pages\Auth\RequestPasswordReset::class)
+            ->login(\App\Filament\Pages\Auth\Login::class)
+            ->passwordReset(
+                requestAction: \App\Filament\Pages\Auth\RequestPasswordReset::class,
+                resetAction: \App\Filament\Pages\Auth\ResetPassword::class
+            )
             ->colors([
                 'primary' => Color::Amber,
             ])
@@ -61,8 +64,8 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
-                \App\Http\Middleware\EnsureEmailIsVerified::class, // Story 1.3: Check for email verification
-                CheckIpWhitelist::class, // IP 白名單檢查
+                // \App\Http\Middleware\EnsureEmailIsVerified::class, // Story 1.3: Check for email verification
+                // CheckIpWhitelist::class, // IP 白名單檢查
             ]);
     }
 }

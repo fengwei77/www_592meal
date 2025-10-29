@@ -23,6 +23,9 @@ class Customer extends Authenticatable
         'avatar_url',
         'phone',
         'email',
+        'notification_confirmed',
+        'notification_preparing',
+        'notification_ready',
     ];
 
     /**
@@ -36,8 +39,27 @@ class Customer extends Authenticatable
     protected function casts(): array
     {
         return [
+            'notification_confirmed' => 'boolean',
+            'notification_preparing' => 'boolean',
+            'notification_ready' => 'boolean',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
         ];
+    }
+
+    /**
+     * 關聯：訂單
+     */
+    public function orders()
+    {
+        return $this->hasMany(Order::class);
+    }
+
+    /**
+     * 關聯：推播訂閱
+     */
+    public function pushSubscriptions()
+    {
+        return $this->hasMany(PushSubscription::class);
     }
 }

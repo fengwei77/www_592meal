@@ -70,10 +70,10 @@ class StoreFactory extends Factory
             'logo_url' => fake()->imageUrl(200, 200, 'business'),
             'cover_image_url' => fake()->imageUrl(800, 400, 'business'),
             'social_links' => [
-                'facebook' => fake()->userName(),
-                'instagram' => fake()->userName(),
+                'facebook' => fake()->regexify('[a-z0-9]{6,12}'),
+                'instagram' => fake()->regexify('[a-z0-9]{6,12}'),
                 'line' => fake()->regexify('[a-z0-9]{10}'),
-                'website' => fake()->url(),
+                'website' => 'https://example-' . fake()->numberBetween(1000, 9999) . '.com',
             ],
             'settings' => [
                 'currency' => 'TWD',
@@ -84,7 +84,11 @@ class StoreFactory extends Factory
                 'enabled' => false,
                 'approval_status' => 'pending',
             ],
+            'service_mode' => fake()->randomElement(['pickup', 'onsite', 'hybrid']),
             'is_active' => true,
+            'is_featured' => fake()->boolean(20), // 20% 機率為推薦店家
+            'city' => fake()->randomElement(['台北市', '新北市', '桃園市', '台中市', '台南市', '高雄市']),
+            'area' => fake()->randomElement(['中正區', '大安區', '信義區', '中山區', '松山區', '板橋區', '三重區', '中和區']),
         ];
     }
 
