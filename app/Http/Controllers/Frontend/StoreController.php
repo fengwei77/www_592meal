@@ -372,8 +372,21 @@ class StoreController extends Controller
         }
 
         $stores = $query->withCount(['orders', 'menuItems'])
-                       ->limit(100) // 地圖模式限制數量
+                       ->limit(200) // 地圖模式限制數量
                        ->get();
+
+        // 確保至少有一些店家資料
+        if ($stores->isEmpty()) {
+            // 如果沒有符合條件的店家，嘗試取得所有店家
+            $stores = Store::where('is_active', true)
+                           ->whereNotNull('latitude')
+                           ->whereNotNull('longitude')
+                           ->withCount(['orders', 'menuItems'])
+                           ->orderBy('is_featured', 'desc')
+                           ->orderBy('created_at', 'desc')
+                           ->limit(50)
+                           ->get();
+        }
 
         $data = $stores->map(function ($store) use ($userLat, $userLng) {
             $storeData = [

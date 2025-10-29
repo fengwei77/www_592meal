@@ -576,6 +576,14 @@
         <button class="view-tab {{ $view == 'map' ? 'active' : '' }}" onclick="switchView('map')">
             🗺️ 地圖模式
         </button>
+        @if(config('app.debug'))
+            <button class="view-tab" onclick="debugMapState()" title="檢查地圖狀態">
+                🗺️
+            </button>
+            <button class="view-tab" onclick="debugReloadMapStores()" title="重新載入店家">
+                🔄
+            </button>
+        @endif
     </div>
 
     <!-- 店家列表 -->
@@ -713,6 +721,20 @@ function initMap() {
 
     // 加入定位控制按鈕
     addLocationControl();
+
+    // 監聽地圖邊界變化
+    if (state.map) {
+        state.map.on('moveend', function() {
+            // 當地圖移動結束時，可以根據新的邊界重新載入店家
+            console.log('地圖移動結束');
+        });
+
+        // 監聽地圖拖曳結束
+        state.map.on('dragend', function() {
+            console.log('地圖拖曳結束，可以根據新邊界載入店家');
+            // 這裡可以加入自動載入邊界內店家的邏輯
+        });
+    }
 }
 
 // 加入定位控制按鈕
@@ -908,6 +930,33 @@ function navigateToStore(lat, lng, storeName) {
     showToast(`正在開啟地圖導航至 ${storeName}`, 'info');
 }
 
+// 調試函數：手動重新載入地圖店家
+function debugReloadMapStores() {
+    console.log('🔄 手動重新載入地圖店家');
+    if (state.map) {
+        loadMapStores();
+    } else {
+        console.log('❌ 地圖尚未初始化');
+        showToast('地圖尚未初始化，請先切換到地圖模式', 'error');
+    }
+}
+
+// 調試函數：檢查地圖狀態
+function debugMapState() {
+    console.log('🗺️ 地圖狀態檢查:');
+    console.log('state.map:', !!state.map);
+    console.log('state.markers 數量:', state.markers.length);
+    console.log('state.userLocation:', state.userLocation);
+    console.log('state.userLocationMarker:', !!state.userLocationMarker);
+    console.log('state.currentFilters:', state.currentFilters);
+
+    if (state.map) {
+        console.log('地圖中心:', state.map.getCenter());
+        console.log('地圖縮放級別:', state.map.getZoom());
+        console.log('地圖邊界:', state.map.getBounds());
+    }
+}
+
 // 檢測是否為行動裝置
 function isMobileDevice() {
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -921,31 +970,66 @@ async function loadMapStores() {
             if (value) params.set(key, value);
         });
 
+        // 如果有使用者位置，加入位置參數
+        if (state.userLocation) {
+            params.set('user_lat', state.userLocation.latitude);
+            params.set('user_lng', state.userLocation.longitude);
+        }
+
+        console.log('載入地圖店家資料，參數:', params.toString());
         const response = await fetch(`/api/stores/map?${params}`);
         const data = await response.json();
+
+        console.log('地圖店家資料回應:', data);
 
         // 清除現有標記
         state.markers.forEach(marker => state.map.removeLayer(marker));
         state.markers = [];
 
+        // 檢查是否有店家資料
+        if (!data.stores || data.stores.length === 0) {
+            console.log('沒有找到店家資料');
+            // 顯示提示訊息
+            if (state.map) {
+                L.popup()
+                    .setLatLng([23.8, 121.0])
+                    .setContent('<div style="text-align: center; padding: 10px;">沒有符合條件的店家<br>請調整篩選條件或擴大地圖範圍</div>')
+                    .openOn(state.map);
+            }
+            return;
+        }
+
+        console.log(`找到 ${data.stores.length} 家店家`);
+
         // 添加新標記
         data.stores.forEach(store => {
+            const popupContent = `
+                <div style="min-width: 220px;">
+                    <img src="${store.logo_url || '/images/default-store.svg'}" style="width: 60px; height: 60px; border-radius: 8px; object-fit: cover;">
+                    <h4 style="margin: 8px 0 4px 0;">${store.name}</h4>
+                    ${store.distance ? `<p style="margin: 0 0 4px 0; color: #3b82f6; font-size: 14px; font-weight: bold;">📍 ${store.distance}</p>` : ''}
+                    <p style="margin: 0 0 4px 0; color: #666; font-size: 14px;">${store.address}</p>
+                    <p style="margin: 0 0 8px 0; color: ${store.is_open ? '#10b981' : '#6b7280'}; font-size: 13px;">
+                        ${store.is_open ? '🟢 ' : '🔴 '}${store.open_hours_text}
+                    </p>
+                    <a href="${store.store_url}"
+                       class="btn btn-primary btn-sm"
+                       style="background: #3b82f6; color: white; padding: 4px 12px; border-radius: 4px; text-decoration: none; display: inline-block;">
+                        進入店家
+                    </a>
+                    ${store.distance ? `
+                        <button onclick="navigateToStore(${store.latitude}, ${store.longitude}, '${store.name}')"
+                                class="btn btn-secondary btn-sm"
+                                style="background: #6b7280; color: white; padding: 4px 12px; border-radius: 4px; text-decoration: none; display: inline-block; margin-left: 4px; border: none; cursor: pointer;">
+                            🧭 導航
+                        </button>
+                    ` : ''}
+                </div>
+            `;
+
             const marker = L.marker([store.latitude, store.longitude])
                 .addTo(state.map)
-                .bindPopup(`
-                    <div style="min-width: 200px;">
-                        <img src="${store.logo_url}" style="width: 60px; height: 60px; border-radius: 8px; object-fit: cover;">
-                        <h4 style="margin: 8px 0 4px 0;">${store.name}</h4>
-                        <p style="margin: 0 0 4px 0; color: #666; font-size: 14px;">${store.address}</p>
-                        <p style="margin: 0 0 8px 0; color: ${store.is_open ? '#10b981' : '#6b7280'}; font-size: 13px;">
-                            ${store.is_open ? '🟢 ' : '🔴 '}${store.open_hours_text}
-                        </p>
-                        <a href="${store.store_url}"
-                           class="btn btn-primary btn-sm" style="background: #3b82f6; color: white; padding: 4px 12px; border-radius: 4px; text-decoration: none; display: inline-block;">
-                            進入店家
-                        </a>
-                    </div>
-                `);
+                .bindPopup(popupContent);
 
             state.markers.push(marker);
         });
@@ -953,7 +1037,24 @@ async function loadMapStores() {
         // 自動調整地圖範圍
         if (state.markers.length > 0) {
             const group = new L.featureGroup(state.markers);
-            state.map.fitBounds(group.getBounds().pad(0.1));
+            const bounds = group.getBounds();
+
+            // 如果有使用者位置，也包含使用者位置
+            if (state.userLocationMarker) {
+                const userGroup = new L.featureGroup([state.userLocationMarker, ...state.markers]);
+                state.map.fitBounds(userGroup.getBounds().pad(0.15));
+            } else {
+                state.map.fitBounds(bounds.pad(0.1));
+            }
+
+            console.log('地圖範圍已調整:', bounds);
+        } else {
+            // 如果沒有店家，但有篩選條件，顯示相應訊息
+            const hasFilters = Object.values(state.currentFilters).some(value => value);
+            if (hasFilters) {
+                console.log('有篩選條件但沒有找到店家');
+                // 可以在這裡加入「擴大範圍」的建議
+            }
         }
 
     } catch (error) {
