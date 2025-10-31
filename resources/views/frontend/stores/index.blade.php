@@ -663,7 +663,15 @@ function switchView(view) {
         document.getElementById('list-view').classList.add('hidden');
         document.getElementById('map-view').classList.remove('hidden');
         updateURL({ view: 'map' });
-        initMap();
+
+        // 檢查 Leaflet 是否已載入，如果沒有則等待載入
+        if (typeof L !== 'undefined') {
+            console.log('Leaflet 已載入，直接初始化地圖');
+            setTimeout(() => initMap(), 100);
+        } else {
+            console.log('Leaflet 尚未載入，等待載入完成後初始化地圖');
+            // 等待 Leaflet 載入完成後會自動調用 initMap()
+        }
     }
 }
 
@@ -702,6 +710,11 @@ function updateURL(params) {
 
 // 初始化地圖
 function initMap() {
+    // 檢查 Leaflet 是否已載入
+    if (typeof L === 'undefined') {
+        console.log('Leaflet 尚未載入，延遲初始化地圖');
+        return;
+    }
     if (state.map) return;
 
     // 使用 Leaflet.js (開源地圖庫)
@@ -722,6 +735,7 @@ function initMap() {
     // 加入定位控制按鈕
     addLocationControl();
 
+    
     // 監聽地圖邊界變化
     if (state.map) {
         state.map.on('moveend', function() {
@@ -976,6 +990,7 @@ async function loadMapStores() {
             params.set('user_lng', state.userLocation.longitude);
         }
 
+        
         console.log('載入地圖店家資料，參數:', params.toString());
         const response = await fetch(`/api/stores/map?${params}`);
         const data = await response.json();
@@ -1001,14 +1016,28 @@ async function loadMapStores() {
 
         console.log(`找到 ${data.stores.length} 家店家`);
 
-        // 添加新標記
+        // 只處理有坐標的店家
+        const storesWithCoordinates = [];
+
         data.stores.forEach(store => {
+            if (store.has_coordinates && store.latitude && store.longitude) {
+                storesWithCoordinates.push(store);
+                console.log(`✅ 店家 ${store.name} 有坐標，加入地圖`);
+            } else {
+                console.log(`⚠️ 店家 ${store.name} 無坐標，跳過顯示`);
+            }
+        });
+
+        console.log(`地圖將顯示 ${storesWithCoordinates.length} 家有坐標的店家`);
+
+        // 先標記有坐標的店家
+        storesWithCoordinates.forEach(store => {
             const popupContent = `
                 <div style="min-width: 220px;">
                     <img src="${store.logo_url || '/images/default-store.svg'}" style="width: 60px; height: 60px; border-radius: 8px; object-fit: cover;">
                     <h4 style="margin: 8px 0 4px 0;">${store.name}</h4>
                     ${store.distance ? `<p style="margin: 0 0 4px 0; color: #3b82f6; font-size: 14px; font-weight: bold;">📍 ${store.distance}</p>` : ''}
-                    <p style="margin: 0 0 4px 0; color: #666; font-size: 14px;">${store.address}</p>
+                    <p style="margin: 0 0 4px 0; color: #666; font-size: 14px;">${store.full_address || store.address}</p>
                     <p style="margin: 0 0 8px 0; color: ${store.is_open ? '#10b981' : '#6b7280'}; font-size: 13px;">
                         ${store.is_open ? '🟢 ' : '🔴 '}${store.open_hours_text}
                     </p>
@@ -1145,7 +1174,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 如果是地圖模式，初始化地圖
     if (state.currentView === 'map') {
-        initMap();
+        if (typeof L !== 'undefined') {
+            console.log('Leaflet 已載入，初始化地圖');
+            setTimeout(() => initMap(), 100);
+        } else {
+            console.log('Leaflet 尚未載入，等待載入完成');
+        }
     }
 
     // 處理瀏覽器後退/前進
@@ -1164,6 +1198,7 @@ if (typeof L === 'undefined') {
     const script = document.createElement('script');
     script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
     script.onload = function() {
+        console.log('Leaflet.js 載入完成');
         // 載入 Leaflet CSS
         const link = document.createElement('link');
         link.rel = 'stylesheet';
@@ -1172,10 +1207,24 @@ if (typeof L === 'undefined') {
 
         // 如果是地圖模式，初始化地圖
         if (state.currentView === 'map') {
-            initMap();
+            setTimeout(() => {
+                console.log('開始初始化地圖');
+                initMap();
+            }, 100);
         }
     };
     document.head.appendChild(script);
+} else {
+    // Leaflet 已載入，直接初始化地圖
+    console.log('Leaflet 已經載入，準備初始化地圖');
+
+    // 如果是地圖模式，初始化地圖
+    if (state.currentView === 'map') {
+        setTimeout(() => {
+            console.log('開始初始化地圖');
+            initMap();
+        }, 100);
+    }
 }
 </script>
 @endsection

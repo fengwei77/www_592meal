@@ -219,22 +219,7 @@
         </div>
     </footer>
 
-    <!-- 調試工具 (僅在開發環境顯示) -->
-    @if(config('app.env') === 'local')
-    <div class="fixed bottom-4 right-4 z-50">
-        <button onclick="window.simpleFormProtection.reset()"
-                class="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-sm shadow-lg"
-                title="重置表單防護">
-            🔓 重置防護
-        </button>
-        <button onclick="console.log('Form protection status:', window.simpleFormProtection.isSubmitting)"
-                class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg text-sm shadow-lg ml-2"
-                title="檢查防護狀態">
-            🔍 檢查狀態
-        </button>
-    </div>
-    @endif
-
+  
     <!-- 購物車側邊欄 -->
     <div id="cart-sidebar" class="fixed right-0 top-0 bg-white shadow-lg transform translate-x-full transition-transform duration-300 z-50 flex flex-col" style="width: 90vw; max-width: 800px; min-width: 320px; height: 100vh; max-height: 100vh;">
     <style>
@@ -687,6 +672,55 @@
                     showNotification('error', '清空失敗，請稍後再試');
                 });
             };
+        });
+    </script>
+
+    <!-- 錯誤過濾腳本 - 過濾瀏覽器擴充功能錯誤 -->
+    <script>
+        // 過濾來自瀏覽器擴充功能的錯誤訊息
+        window.addEventListener('error', function(event) {
+            const errorSources = [
+                'inject.js',
+                'inpage.js',
+                'injectLeap.js',
+                'dapp-interface.js',
+                'gt-window-provider.js',
+                'gt-provider-bridge.js',
+                'contents.'
+            ];
+
+            const isExtensionError = errorSources.some(source =>
+                event.filename && event.filename.includes(source)
+            );
+
+            if (isExtensionError) {
+                event.preventDefault();
+                event.stopPropagation();
+                return false;
+            }
+        });
+
+        // 過濾未處理的 Promise 拒絕
+        window.addEventListener('unhandledrejection', function(event) {
+            const errorSources = [
+                'inject.js',
+                'inpage.js',
+                'injectLeap.js',
+                'dapp-interface.js',
+                'gt-window-provider.js',
+                'gt-provider-bridge.js',
+                'contents.'
+            ];
+
+            const isExtensionError = errorSources.some(source =>
+                event.reason && event.reason.stack && event.reason.stack.includes(source)
+            );
+
+            if (isExtensionError) {
+                event.preventDefault();
+                event.stopPropagation();
+                return false;
+            }
         });
     </script>
 
