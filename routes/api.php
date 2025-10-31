@@ -30,6 +30,24 @@ Route::prefix('stores')->group(function () {
 
     // 單一店家詳細資訊API
     Route::get('/{store}', [StoreController::class, 'show']);
+
+    // 地址地理編碼 API
+    Route::post('/geocode', [StoreController::class, 'geocodeAddress']);
+
+    // 批量地址地理編碼 API
+    Route::post('/batch-geocode', [StoreController::class, 'batchGeocodeAddresses']);
+
+    // 更新店家坐標 API
+    Route::put('/{store}/coordinates', [StoreController::class, 'updateStoreCoordinates']);
+
+    // 自動地理編碼店家 API
+    Route::post('/auto-geocode', [StoreController::class, 'autoGeocodeStores']);
+
+    // 坐標統計 API
+    Route::get('/coordinates-stats', [StoreController::class, 'getCoordinatesStats']);
+
+    // 編輯頁面地址定位 API
+    Route::post('/{store}/geocode-edit', [StoreController::class, 'geocodeStoreForEdit']);
 });
 
 /*

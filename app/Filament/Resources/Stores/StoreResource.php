@@ -127,19 +127,42 @@ class StoreResource extends Resource
                 // 地理位置區塊
                 Section::make('地理位置')
                     ->schema([
-                        Forms\Components\TextInput::make('latitude')
-                            ->label('緯度')
-                            ->numeric()
-                            ->step(0.00000001),
+                        Grid::make(2)
+                            ->schema([
+                                Forms\Components\TextInput::make('latitude')
+                                    ->label('緯度')
+                                    ->numeric()
+                                    ->step(0.00000001)
+                                    ->placeholder('例：25.033976')
+                                    ->helperText('留空將自動從地址獲取坐標')
+                                    ->extraAttributes(['class' => 'latitude-input']),
 
-                        Forms\Components\TextInput::make('longitude')
-                            ->label('經度')
-                            ->numeric()
-                            ->step(0.00000001),
+                                Forms\Components\TextInput::make('longitude')
+                                    ->label('經度')
+                                    ->numeric()
+                                    ->step(0.00000001)
+                                    ->placeholder('例：121.564539')
+                                    ->helperText('留空將自動從地址獲取坐標')
+                                    ->extraAttributes(['class' => 'longitude-input']),
+                            ]),
 
+                  
                         Forms\Components\Placeholder::make('location_hint')
-                            ->label('提示')
-                            ->content('您可以通過 Google Maps 取得準確的經緯度坐標'),
+                            ->label('地址定位說明')
+                            ->content(function ($record) {
+                                $hasAddress = !empty($record->address);
+                                $hasCoordinates = !empty($record->latitude) && !empty($record->longitude) && $record->latitude != 0 && $record->longitude != 0;
+
+                                if ($hasAddress && !$hasCoordinates) {
+                                    return '📍 地址已輸入，保存後系統將自動為您定位坐標';
+                                } elseif ($hasAddress && $hasCoordinates) {
+                                    return '⚠️ 地址已修改！請選擇操作：' . "\n" .
+                                           '1. 清空下方坐標欄位，保存後系統將重新定位' . "\n" .
+                                           '2. 或手動輸入新的經緯度坐標';
+                                } else {
+                                    return '💡 請先輸入地址，然後保存讓系統自動定位，或手動輸入經緯度坐標';
+                                }
+                            })
                     ])
                     ->columns(1)  // 改為單層佈局，類似手機版
                     ->collapsible()
@@ -593,6 +616,7 @@ class StoreResource extends Resource
                     )
                     ->tooltip('管理此店家的菜單'),
 
+  
                 Actions\ViewAction::make(),
                 Actions\EditAction::make(),
                 Actions\DeleteAction::make()

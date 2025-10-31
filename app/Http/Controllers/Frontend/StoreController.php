@@ -4,10 +4,13 @@ namespace App\Http\Controllers\Frontend;
 
 use App\Http\Controllers\Controller;
 use App\Models\Store;
+use App\Services\AddressGeocodingService;
+use App\Services\StoreGeocodingService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Database\Eloquent\Builder;
 
 class StoreController extends Controller
@@ -332,10 +335,33 @@ class StoreController extends Controller
         $area = $request->get('area');
         $userLat = $request->get('user_lat'); // 使用者緯度
         $userLng = $request->get('user_lng'); // 使用者經度
+        $includeAddressOnly = $request->get('include_address_only', 'false'); // 是否包含僅有地址的店家
 
-        $query = Store::where('is_active', true)
-                      ->whereNotNull('latitude')
-                      ->whereNotNull('longitude');
+        $query = Store::where('is_active', true);
+
+        // 根據參數決定是否包含僅有地址的店家
+        if ($includeAddressOnly === 'true') {
+            // 包含有坐標的店家，以及有地址但沒有坐標的店家
+            $query->where(function ($q) {
+                $q->where(function ($subQuery) {
+                    $subQuery->whereNotNull('latitude')
+                          ->whereNotNull('longitude');
+                })->orWhere(function ($subQuery) {
+                    $subQuery->where(function ($innerQuery) {
+                        $innerQuery->whereNotNull('address')
+                              ->orWhereNotNull('city')
+                              ->orWhereNotNull('area');
+                    })->where(function ($innerQuery) {
+                        $innerQuery->whereNull('latitude')
+                              ->orWhereNull('longitude');
+                    });
+                });
+            });
+        } else {
+            // 僅包含有坐標的店家（原始行為）
+            $query->whereNotNull('latitude')
+                  ->whereNotNull('longitude');
+        }
 
         if ($city) {
             $query->where('city', $city);
@@ -388,7 +414,7 @@ class StoreController extends Controller
                            ->get();
         }
 
-        $data = $stores->map(function ($store) use ($userLat, $userLng) {
+        $data = $stores->map(function ($store) use ($userLat, $userLng, $includeAddressOnly) {
             $storeData = [
                 'id' => $store->id,
                 'name' => $store->name,
@@ -397,6 +423,9 @@ class StoreController extends Controller
                 'store_type' => $store->store_type,
                 'type_label' => $store->getTypeLabel(),
                 'address' => $store->address,
+                'city' => $store->city,
+                'area' => $store->area,
+                'full_address' => $store->getFullAddress(),
                 'latitude' => $store->latitude,
                 'longitude' => $store->longitude,
                 'logo_url' => $store->logo_url,
@@ -405,6 +434,9 @@ class StoreController extends Controller
                 'service_mode' => $store->service_mode,
                 'is_featured' => $store->is_featured,
                 'rating' => $store->getAverageRating(),
+                'coordinate_info' => $store->getCoordinateInfo(),
+                'needs_geocoding' => $store->needsGeocoding(),
+                'has_coordinates' => $store->hasCoordinates(),
             ];
 
             // 如果有距離資訊，則格式化距離顯示
@@ -414,6 +446,21 @@ class StoreController extends Controller
                 } else {
                     $storeData['distance'] = round($store->distance_km, 1) . ' 公里';
                 }
+            }
+
+            // 如果包含地址僅有的店家，添加地址定位提示
+            if ($includeAddressOnly === 'true' && !$store->hasCoordinates() && !empty($store->getFullAddress())) {
+                $storeData['location_status'] = 'address_only';
+                $storeData['location_message'] = '店家有地址資訊，但尚未標定確切坐標';
+                $storeData['can_be_geocoded'] = true;
+            } elseif ($store->hasCoordinates()) {
+                $storeData['location_status'] = 'has_coordinates';
+                $storeData['location_message'] = '店家坐標已標定';
+                $storeData['can_be_geocoded'] = false;
+            } else {
+                $storeData['location_status'] = 'no_location';
+                $storeData['location_message'] = '店家缺少地址和坐標資訊';
+                $storeData['can_be_geocoded'] = false;
             }
 
             return $storeData;
@@ -505,5 +552,439 @@ class StoreController extends Controller
                                ->toArray(),
             ];
         });
+    }
+
+    /**
+     * API: 地址地理編碼 - 將地址轉換為經緯度
+     */
+    public function geocodeAddress(Request $request): JsonResponse
+    {
+        $request->validate([
+            'address' => 'required|string|max:255'
+        ]);
+
+        $address = $request->input('address');
+        $geocodingService = new AddressGeocodingService();
+
+        try {
+            // 驗證地址格式
+            if (!$geocodingService->validateAddress($address)) {
+                return response()->json([
+                    'success' => false,
+                    'error' => '地址格式無效',
+                    'message' => '請輸入有效的台灣地址'
+                ], 400);
+            }
+
+            // 標準化地址
+            $normalizedAddress = $geocodingService->normalizeAddress($address);
+
+            // 執行地理編碼
+            $result = $geocodingService->geocodeAddress($normalizedAddress);
+
+            if (!$result) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'geocoding_failed',
+                    'message' => '無法找到該地址的坐標資訊',
+                    'original_address' => $address,
+                    'normalized_address' => $normalizedAddress
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'latitude' => $result['latitude'],
+                    'longitude' => $result['longitude'],
+                    'formatted_address' => $result['formatted_address'],
+                    'confidence' => $result['confidence'],
+                    'source' => $result['source'],
+                    'original_address' => $address,
+                    'normalized_address' => $normalizedAddress
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('地址地理編碼失敗', [
+                'address' => $address,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'server_error',
+                'message' => '伺服器錯誤，請稍後再試'
+            ], 500);
+        }
+    }
+
+    /**
+     * API: 批量地址地理編碼
+     */
+    public function batchGeocodeAddresses(Request $request): JsonResponse
+    {
+        $request->validate([
+            'addresses' => 'required|array|max:10', // 限制最多10個地址
+            'addresses.*' => 'required|string|max:255'
+        ]);
+
+        $addresses = $request->input('addresses');
+        $geocodingService = new AddressGeocodingService();
+
+        try {
+            $results = [];
+
+            foreach ($addresses as $index => $address) {
+                // 驗證地址格式
+                if (!$geocodingService->validateAddress($address)) {
+                    $results[$index] = [
+                        'success' => false,
+                        'error' => 'invalid_address',
+                        'message' => '地址格式無效'
+                    ];
+                    continue;
+                }
+
+                // 標準化地址
+                $normalizedAddress = $geocodingService->normalizeAddress($address);
+
+                // 執行地理編碼
+                $geocodingResult = $geocodingService->geocodeAddress($normalizedAddress);
+
+                if ($geocodingResult) {
+                    $results[$index] = [
+                        'success' => true,
+                        'data' => [
+                            'latitude' => $geocodingResult['latitude'],
+                            'longitude' => $geocodingResult['longitude'],
+                            'formatted_address' => $geocodingResult['formatted_address'],
+                            'confidence' => $geocodingResult['confidence'],
+                            'source' => $geocodingResult['source']
+                        ]
+                    ];
+                } else {
+                    $results[$index] = [
+                        'success' => false,
+                        'error' => 'geocoding_failed',
+                        'message' => '無法找到該地址的坐標資訊'
+                    ];
+                }
+
+                // 添加延遲避免 API 限制
+                usleep(200000); // 0.2 秒
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => $results,
+                'total_processed' => count($addresses),
+                'successful' => count(array_filter($results, fn($r) => $r['success']))
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('批量地址地理編碼失敗', [
+                'addresses' => $addresses,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'server_error',
+                'message' => '伺服器錯誤，請稍後再試'
+            ], 500);
+        }
+    }
+
+    /**
+     * API: 更新店家坐標
+     */
+    public function updateStoreCoordinates(Request $request, Store $store): JsonResponse
+    {
+        $request->validate([
+            'latitude' => 'required|numeric|between:-90,90',
+            'longitude' => 'required|numeric|between:-180,180',
+            'source' => 'nullable|string|max:50'
+        ]);
+
+        try {
+            $latitude = $request->input('latitude');
+            $longitude = $request->input('longitude');
+            $source = $request->input('source', 'manual');
+
+            $success = $store->updateCoordinates($latitude, $longitude, $source);
+
+            if ($success) {
+                return response()->json([
+                    'success' => true,
+                    'message' => '店家坐標更新成功',
+                    'data' => [
+                        'store_id' => $store->id,
+                        'store_name' => $store->name,
+                        'latitude' => (float) $store->latitude,
+                        'longitude' => (float) $store->longitude,
+                        'source' => $source
+                    ]
+                ]);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'update_failed',
+                    'message' => '更新店家坐標失敗'
+                ], 500);
+            }
+
+        } catch (\Exception $e) {
+            Log::error('更新店家坐標失敗', [
+                'store_id' => $store->id,
+                'latitude' => $request->input('latitude'),
+                'longitude' => $request->input('longitude'),
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'server_error',
+                'message' => '伺服器錯誤，請稍後再試'
+            ], 500);
+        }
+    }
+
+    /**
+     * API: 自動更新所有缺少坐標的店家
+     */
+    public function autoGeocodeStores(): JsonResponse
+    {
+        try {
+            // 獲取需要地理編碼的店家
+            $storesNeedingGeocoding = Store::where('is_active', true)
+                ->needsGeocoding()
+                ->limit(20) // 限制處理數量避免超時
+                ->get();
+
+            if ($storesNeedingGeocoding->isEmpty()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => '沒有需要地理編碼的店家',
+                    'data' => [
+                        'processed' => 0,
+                        'updated' => 0,
+                        'failed' => 0
+                    ]
+                ]);
+            }
+
+            $geocodingService = new AddressGeocodingService();
+            $processed = 0;
+            $updated = 0;
+            $failed = 0;
+            $results = [];
+
+            foreach ($storesNeedingGeocoding as $store) {
+                $processed++;
+                $address = $store->getGeocodableAddress();
+
+                try {
+                    $geocodingResult = $geocodingService->geocodeAddress($address);
+
+                    if ($geocodingResult) {
+                        $success = $store->updateCoordinates(
+                            $geocodingResult['latitude'],
+                            $geocodingResult['longitude'],
+                            $geocodingResult['source']
+                        );
+
+                        if ($success) {
+                            $updated++;
+                            $results[] = [
+                                'store_id' => $store->id,
+                                'store_name' => $store->name,
+                                'address' => $address,
+                                'coordinates' => [
+                                    'latitude' => $geocodingResult['latitude'],
+                                    'longitude' => $geocodingResult['longitude']
+                                ],
+                                'source' => $geocodingResult['source'],
+                                'confidence' => $geocodingResult['confidence']
+                            ];
+                        } else {
+                            $failed++;
+                        }
+                    } else {
+                        $failed++;
+                        $results[] = [
+                            'store_id' => $store->id,
+                            'store_name' => $store->name,
+                            'address' => $address,
+                            'error' => 'geocoding_failed'
+                        ];
+                    }
+
+                    // 添加延遲避免 API 限制
+                    usleep(500000); // 0.5 秒
+
+                } catch (\Exception $e) {
+                    $failed++;
+                    Log::error('單一店家地理編碼失敗', [
+                        'store_id' => $store->id,
+                        'address' => $address,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => "處理完成：處理 {$processed} 家，更新 {$updated} 家，失敗 {$failed} 家",
+                'data' => [
+                    'processed' => $processed,
+                    'updated' => $updated,
+                    'failed' => $failed,
+                    'results' => $results
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('自動地理編碼店家失敗', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'server_error',
+                'message' => '伺服器錯誤，請稍後再試'
+            ], 500);
+        }
+    }
+
+    /**
+     * API: 獲取店家坐標統計
+     */
+    public function getCoordinatesStats(): JsonResponse
+    {
+        try {
+            $totalStores = Store::where('is_active', true)->count();
+            $storesWithCoordinates = Store::where('is_active', true)
+                ->withCoordinates()
+                ->count();
+            $storesNeedingGeocoding = Store::where('is_active', true)
+                ->needsGeocoding()
+                ->count();
+
+            $coveragePercentage = $totalStores > 0
+                ? round(($storesWithCoordinates / $totalStores) * 100, 2)
+                : 0;
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'total_stores' => $totalStores,
+                    'stores_with_coordinates' => $storesWithCoordinates,
+                    'stores_needing_geocoding' => $storesNeedingGeocoding,
+                    'coverage_percentage' => $coveragePercentage,
+                    'coverage_status' => match(true) {
+                        $coveragePercentage >= 90 => 'excellent',
+                        $coveragePercentage >= 70 => 'good',
+                        $coveragePercentage >= 50 => 'fair',
+                        default => 'poor'
+                    }
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('獲取坐標統計失敗', [
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'server_error',
+                'message' => '伺服器錯誤，請稍後再試'
+            ], 500);
+        }
+    }
+
+    /**
+     * API: 編輯頁面地址定位
+     * 專為店家編輯頁面設計的地址定位功能
+     */
+    public function geocodeStoreForEdit(Store $store, Request $request): JsonResponse
+    {
+        try {
+            // 檢查店家是否存在
+            if (!$store) {
+                return response()->json([
+                    'success' => false,
+                    'message' => '找不到指定的店家'
+                ], 404);
+            }
+
+            // 檢查是否有地址
+            if (empty($store->address)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => '店家地址為空，無法進行定位'
+                ]);
+            }
+
+            // 檢查是否已經有有效的坐標
+            if (!empty($store->latitude) && !empty($store->longitude) &&
+                $store->latitude != 0 && $store->longitude != 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => '店家已經有坐標資料，無需重新定位'
+                ]);
+            }
+
+            // 使用 StoreGeocodingService 進行地址定位
+            $geocodingService = app(StoreGeocodingService::class);
+            $result = $geocodingService->geocodeStore($store);
+
+            if ($result['success']) {
+                Log::info('編輯頁面地址定位成功', [
+                    'store_id' => $store->id,
+                    'store_name' => $store->name,
+                    'address' => $store->address,
+                    'coordinates' => $result['data']
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => '地址定位成功',
+                    'data' => [
+                        'latitude' => $store->fresh()->latitude,
+                        'longitude' => $store->fresh()->longitude,
+                        'source' => $result['data']['source'] ?? 'google'
+                    ]
+                ]);
+            } else {
+                Log::warning('編輯頁面地址定位失敗', [
+                    'store_id' => $store->id,
+                    'store_name' => $store->name,
+                    'address' => $store->address,
+                    'error' => $result['message']
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => $result['message']
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            Log::error('編輯頁面地址定位發生錯誤', [
+                'store_id' => $store->id ?? null,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => '地址定位時發生伺服器錯誤，請稍後再試'
+            ], 500);
+        }
     }
 }
