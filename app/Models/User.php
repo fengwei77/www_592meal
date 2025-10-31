@@ -206,4 +206,29 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return $this->hasMany(\App\Models\Store::class);
     }
+
+    /**
+     * 檢查用戶是否可以訪問 Filament 管理面板
+     */
+    public function canAccessPanel(\Filament\Panel $panel): bool
+    {
+        // 只有超級管理員和店家擁有者可以訪問後台
+        return $this->hasRole(['super_admin', 'store_owner']);
+    }
+
+    /**
+     * 檢查用戶是否為超級管理員
+     */
+    public function isSuperAdmin(): bool
+    {
+        return $this->hasRole('super_admin');
+    }
+
+    /**
+     * 檢查用戶是否為店家擁有者
+     */
+    public function isStoreOwner(): bool
+    {
+        return $this->hasRole('store_owner');
+    }
 }
