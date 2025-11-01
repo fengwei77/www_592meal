@@ -47,6 +47,18 @@ class SetupSystem extends Command
             $this->info('Super Admin Login: ' . config('app.admin_url'));
             $this->info('Frontend: ' . config('app.url'));
             $this->info('');
+
+            // 顯示當前配置的超級管理員資訊
+            $superAdminConfig = $this->getSuperAdminConfig();
+            $this->info('Default Super Admin Credentials:');
+            $this->info('  Name: ' . $superAdminConfig['name']);
+            $this->info('  Email: ' . $superAdminConfig['email']);
+            $this->info('  Password: ' . $superAdminConfig['password']);
+            $this->info('');
+            $this->info('⚠️  These credentials are read from .env file');
+            $this->info('⚠️  To change credentials, modify SUPER_ADMIN_* variables in .env');
+            $this->info('');
+
             $this->info('Next steps:');
             $this->info('1. Login to admin panel');
             $this->info('2. Create or manage stores');
@@ -140,7 +152,10 @@ class SetupSystem extends Command
      */
     private function createSuperAdmin()
     {
-        // 檢查是否已存在 Super Admin
+        // 從環境變數獲取配置
+        $superAdminConfig = $this->getSuperAdminConfig();
+
+        // 檢查是否已存在 Super Admin（根據 email）
         $existingSuperAdmin = User::whereHas('roles', function ($query) {
             $query->where('name', 'super_admin');
         })->first();
@@ -156,9 +171,9 @@ class SetupSystem extends Command
 
         // 創建 Super Admin 用戶
         $user = User::create([
-            'name' => 'Super Admin',
-            'email' => 'admin@oh592meal.test',
-            'password' => Hash::make('admin123456'),
+            'name' => $superAdminConfig['name'],
+            'email' => $superAdminConfig['email'],
+            'password' => Hash::make($superAdminConfig['password']),
             'email_verified_at' => now(),
         ]);
 
@@ -171,10 +186,23 @@ class SetupSystem extends Command
         $user->givePermissionTo($permissions);
 
         $this->info('  ✅ Created Super Admin user');
-        $this->info('    Email: admin@oh592meal.test');
-        $this->info('    Password: admin123456');
+        $this->info('    Name: ' . $superAdminConfig['name']);
+        $this->info('    Email: ' . $superAdminConfig['email']);
+        $this->info('    Password: ' . $superAdminConfig['password']);
         $this->info('    ');
         $this->info('    ⚠️  Please change the password after first login!');
+    }
+
+    /**
+     * 從環境變數獲取超級管理員配置
+     */
+    private function getSuperAdminConfig(): array
+    {
+        return [
+            'name' => config('super_admin.name', 'Super Admin'),
+            'email' => config('super_admin.email', 'admin@example.com'),
+            'password' => config('super_admin.password', 'admin123456'),
+        ];
     }
 
     /**
