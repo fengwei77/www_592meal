@@ -103,7 +103,7 @@ class StorePolicy
     public function forceDelete(User $user, Store $store): bool
     {
         // 只有 Super Admin 可以永久刪除店家
-        return $user->hasRole('Super Admin');
+        return $user->hasRole('super_admin');
     }
 
     /**
