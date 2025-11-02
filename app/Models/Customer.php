@@ -62,4 +62,12 @@ class Customer extends Authenticatable
     {
         return $this->hasMany(PushSubscription::class);
     }
+
+    /**
+     * 關聯：店家封鎖記錄
+     */
+    public function storeCustomerBlocks()
+    {
+        return $this->hasMany(StoreCustomerBlock::class, 'line_user_id', 'line_id');
+    }
 }
