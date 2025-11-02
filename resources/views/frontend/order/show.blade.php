@@ -197,7 +197,15 @@
                 </div>
 
                 <!-- 操作按鈕 -->
-                <div class="bg-white rounded-lg shadow-sm p-6">
+                <div class="bg-white rounded-lg shadow-sm p-6 space-y-3">
+                    @if(in_array($order->status, ['pending', 'confirmed']))
+                        <!-- 取消訂單按鈕 -->
+                        <button type="button" id="cancelOrderBtn"
+                                class="block w-full px-4 py-3 bg-red-600 text-white text-center rounded-lg hover:bg-red-700 transition-colors font-medium">
+                            <i class="fas fa-times-circle mr-2"></i>取消訂單
+                        </button>
+                    @endif
+
                     <a href="{{ route('frontend.store.detail', $order->store->store_slug_name) }}"
                        class="block w-full px-4 py-3 bg-blue-600 text-white text-center rounded-lg hover:bg-blue-700 transition-colors font-medium">
                         <i class="fas fa-store mr-2"></i>前往店家頁面
@@ -207,4 +215,90 @@
         </div>
     </div>
 </div>
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Order cancel script loaded');
+    const cancelBtn = document.getElementById('cancelOrderBtn');
+    console.log('Cancel button:', cancelBtn);
+
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Cancel button clicked');
+
+            if (confirm('確定要取消此訂單嗎？取消後無法復原。')) {
+                cancelOrder();
+            }
+        });
+    } else {
+        console.log('Cancel button not found - order status may not allow cancellation');
+    }
+
+    function cancelOrder() {
+        console.log('Starting order cancellation...');
+
+        // 禁用按鈕防止重複點擊
+        cancelBtn.disabled = true;
+        cancelBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>取消中...';
+
+        const url = '{{ route('frontend.order.cancel', $order->order_number) }}';
+        const csrfToken = document.querySelector('meta[name="csrf-token"]');
+
+        console.log('Request URL:', url);
+        console.log('CSRF Token:', csrfToken ? 'Found' : 'Not found');
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken ? csrfToken.content : '',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => {
+            console.log('Response status:', response.status);
+            if (!response.ok) {
+                throw new Error('HTTP error ' + response.status);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Response data:', data);
+
+            if (data.success) {
+                // 顯示成功訊息
+                let message = data.message;
+                if (data.warning) {
+                    message += '\n\n' + data.warning;
+                }
+
+                alert(message);
+
+                // 重新載入頁面以顯示更新後的訂單狀態
+                console.log('Reloading page...');
+                window.location.reload();
+            } else {
+                // 顯示錯誤訊息
+                alert(data.message || '取消訂單失敗，請稍後再試');
+
+                // 恢復按鈕
+                cancelBtn.disabled = false;
+                cancelBtn.innerHTML = '<i class="fas fa-times-circle mr-2"></i>取消訂單';
+            }
+        })
+        .catch(error => {
+            console.error('Error details:', error);
+            alert('發生錯誤：' + error.message + '\n請稍後再試');
+
+            // 恢復按鈕
+            cancelBtn.disabled = false;
+            cancelBtn.innerHTML = '<i class="fas fa-times-circle mr-2"></i>取消訂單';
+        });
+    }
+});
+</script>
+@endpush
+
 @endsection

@@ -149,6 +149,7 @@ Route::domain(parse_url(config('app.url'), PHP_URL_HOST))->group(function () {
     // 訂單歷史相關路由
     Route::get('/my-orders', [OrderController::class, 'index'])->name('frontend.order.index');
     Route::get('/order/{orderNumber}', [OrderController::class, 'show'])->name('frontend.order.show');
+    Route::post('/order/{orderNumber}/cancel', [OrderController::class, 'cancel'])->name('frontend.order.cancel');
 
     // 顧客通知設定相關路由（需要 LINE 登入）
     Route::prefix('customer/notifications')->group(function () {

@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Frontend;
 
 use App\Http\Controllers\Controller;
+use App\Models\CustomerOrderLock;
 use App\Models\MenuItem;
 use App\Models\Order;
+use App\Models\OrderCancellationLog;
 use App\Models\OrderItem;
 use App\Services\CartService;
 use Illuminate\Http\Request;
@@ -21,6 +23,17 @@ class OrderController extends Controller
      */
     public function create(Request $request, $store_slug)
     {
+        // 檢查用戶是否被鎖定訂餐功能
+        if (session('line_logged_in') && session('line_user')) {
+            $lineUserId = session('line_user.user_id');
+            if (CustomerOrderLock::isLocked($lineUserId)) {
+                $lock = CustomerOrderLock::getLock($lineUserId);
+                $lockedUntil = $lock->locked_until->format('Y-m-d H:i:s');
+                return redirect()->route('frontend.store.detail', $store_slug)
+                    ->with('error', "您因取消訂單次數過多，已被暫停訂餐功能至 {$lockedUntil}");
+            }
+        }
+
         // 從路由參數獲取店家
         $store = \App\Models\Store::where('store_slug_name', $store_slug)
                                     ->where('is_active', true)
@@ -70,6 +83,16 @@ class OrderController extends Controller
             'customer_phone.max' => '電話不能超過 20 個字元',
             'notes.max' => '備註不能超過 500 個字元',
         ]);
+
+        // 檢查用戶是否被鎖定訂餐功能
+        if (session('line_logged_in') && session('line_user')) {
+            $lineUserId = session('line_user.user_id');
+            if (CustomerOrderLock::isLocked($lineUserId)) {
+                $lock = CustomerOrderLock::getLock($lineUserId);
+                $lockedUntil = $lock->locked_until->format('Y-m-d H:i:s');
+                return back()->with('error', "您因取消訂單次數過多，已被暫停訂餐功能至 {$lockedUntil}");
+            }
+        }
 
         // 從路由參數獲取店家
         $store = \App\Models\Store::where('store_slug_name', $store_slug)
@@ -261,6 +284,139 @@ class OrderController extends Controller
         } while (Order::where('order_number', $orderNumber)->exists());
 
         return $orderNumber;
+    }
+
+    /**
+     * 取消訂單
+     */
+    public function cancel(Request $request, $orderNumber)
+    {
+        // 檢查是否已登入 LINE
+        if (!session('line_logged_in') || !session('line_user')) {
+            return response()->json([
+                'success' => false,
+                'message' => '請先登入 LINE'
+            ], 401);
+        }
+
+        $lineUserId = session('line_user.user_id');
+
+        try {
+            DB::beginTransaction();
+
+            // 檢查用戶是否被鎖定
+            if (CustomerOrderLock::isLocked($lineUserId)) {
+                $lock = CustomerOrderLock::getLock($lineUserId);
+                $lockedUntil = $lock->locked_until->format('Y-m-d H:i:s');
+
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => "您因取消訂單次數過多，已被暫停訂餐功能至 {$lockedUntil}",
+                    'locked_until' => $lockedUntil
+                ], 403);
+            }
+
+            // 查詢訂單並確認屬於當前用戶
+            $order = Order::where('order_number', $orderNumber)
+                ->where('line_user_id', $lineUserId)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$order) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => '訂單不存在'
+                ], 404);
+            }
+
+            // 檢查訂單是否可以取消 (只有 pending 或 confirmed 狀態可以取消)
+            if (!in_array($order->status, ['pending', 'confirmed'])) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => '此訂單目前狀態無法取消'
+                ], 400);
+            }
+
+            // 檢查30分鐘內的取消次數
+            $recentCancellations = OrderCancellationLog::getCancellationCount($lineUserId, 30);
+            if ($recentCancellations >= 3) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => '您在30分鐘內已取消3次訂單，請稍後再試'
+                ], 429);
+            }
+
+            // 檢查今日的取消次數
+            $todayCancellations = OrderCancellationLog::getTodayCancellationCount($lineUserId);
+            if ($todayCancellations >= 10) {
+                // 鎖定用戶24小時
+                CustomerOrderLock::lockUser($lineUserId, 24, $todayCancellations + 1);
+
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => '您今日已取消10次訂單，已被暫停訂餐功能24小時',
+                    'locked' => true
+                ], 429);
+            }
+
+            // 更新訂單狀態為已取消
+            $order->update([
+                'status' => 'cancelled',
+                'cancellation_type' => 'customer_cancelled',
+                'cancellation_reason' => '客戶取消訂單',
+                'cancelled_at' => now(),
+            ]);
+
+            // 記錄取消動作
+            OrderCancellationLog::logCancellation(
+                $lineUserId,
+                $order->id,
+                $request->ip()
+            );
+
+            DB::commit();
+
+            // 檢查是否需要警告用戶
+            $newTodayCount = $todayCancellations + 1;
+            $warningMessage = null;
+
+            if ($newTodayCount >= 8) {
+                $remainingCount = 10 - $newTodayCount;
+                $warningMessage = "提醒：您今日已取消 {$newTodayCount} 次訂單，再取消 {$remainingCount} 次將被暫停訂餐功能24小時";
+            } elseif ($recentCancellations + 1 >= 2) {
+                $remainingCount = 3 - ($recentCancellations + 1);
+                $warningMessage = "提醒：您在30分鐘內已取消 " . ($recentCancellations + 1) . " 次訂單，再取消 {$remainingCount} 次將無法繼續取消訂單";
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => '訂單已成功取消',
+                'warning' => $warningMessage,
+                'cancellation_stats' => [
+                    'today_count' => $newTodayCount,
+                    'recent_count' => $recentCancellations + 1
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            \Log::error('訂單取消失敗', [
+                'error' => $e->getMessage(),
+                'order_number' => $orderNumber,
+                'line_user_id' => $lineUserId,
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => '訂單取消失敗，請稍後再試'
+            ], 500);
+        }
     }
 
     /**

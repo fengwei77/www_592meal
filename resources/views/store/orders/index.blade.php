@@ -57,13 +57,13 @@
             touch-action: pan-y;
         }
 
-        /* 交錯背景色 - 白色和灰色 */
+        /* 交錯背景色 - 白色和淺綠色 */
         .order-card:nth-child(odd) {
             background-color: white;
         }
 
         .order-card:nth-child(even) {
-            background-color: #f9fafb; /* gray-50 */
+            background-color: #fafff9; /* 淺綠色 */
         }
 
         .order-card.swiping {
@@ -239,7 +239,8 @@
                                 <!-- 日期標題（可折疊） -->
                                 <button
                                     class="w-full flex items-center justify-between p-4 text-left hover:bg-gray-100 transition-colors"
-                                    onclick="toggleCollapse('history-{{ $date }}')"
+                                    data-toggle="collapse"
+                                    data-target="history-{{ $date }}"
                                 >
                                     <div class="flex items-center space-x-3">
                                         <i class="fas fa-calendar-day text-gray-600"></i>
@@ -627,24 +628,36 @@
                         card.remove();
                         // 添加到製作中區域
                         addOrderToConfirmed(data.order);
-                        // 接單後立即添加到歷史記錄
-                        addOrderToHistory(data.order);
+                        // 接單後不應該添加到歷史記錄，只有完成或取消時才加入
                         updateCounts();
                     }, 300);
                 } else {
-                    // 訂單狀態不正確，可能已被處理
-                    console.warn('訂單狀態已改變:', data.message);
+                    // 檢查是否因為客戶取消訂單
+                    if (data.cancelled && data.order) {
+                        console.warn('訂單已被客戶取消:', data.message);
+                        showToast('此訂單已被客戶取消', 'warning');
 
-                    // 顯示友善提示
-                    showToast('此訂單已被處理，將自動移除', 'warning');
+                        // 移除卡片並加入歷史記錄
+                        card.style.transition = 'all 0.3s ease';
+                        card.style.opacity = '0';
+                        setTimeout(() => {
+                            card.remove();
+                            addOrderToHistory(data.order);
+                            updateCounts();
+                        }, 300);
+                    } else {
+                        // 訂單狀態不正確，可能已被處理
+                        console.warn('訂單狀態已改變:', data.message);
+                        showToast('此訂單已被處理，將自動移除', 'warning');
 
-                    // 移除卡片
-                    card.style.transition = 'all 0.3s ease';
-                    card.style.opacity = '0';
-                    setTimeout(() => {
-                        card.remove();
-                        updateCounts();
-                    }, 300);
+                        // 移除卡片
+                        card.style.transition = 'all 0.3s ease';
+                        card.style.opacity = '0';
+                        setTimeout(() => {
+                            card.remove();
+                            updateCounts();
+                        }, 300);
+                    }
                 }
             } catch (error) {
                 console.error('確認訂單失敗:', error);
@@ -748,18 +761,32 @@
                         console.log('移除卡片並添加到待取貨區');
                         card.remove();
                         addOrderToReady(data.order);
-                        // 更新歷史記錄中的訂單狀態
-                        addOrderToHistory(data.order);
+                        // 待取貨狀態不應該添加到歷史記錄，只有完成或取消時才加入
                         updateCounts();
                     }, 300);
                 } else {
-                    console.warn('更新狀態失敗:', data.message);
-                    showToast(data.message || '此訂單無法更新狀態', 'warning');
-                    card.style.opacity = '0';
-                    setTimeout(() => {
-                        card.remove();
-                        updateCounts();
-                    }, 300);
+                    // 檢查是否因為客戶取消訂單
+                    if (data.cancelled && data.order) {
+                        console.warn('訂單已被客戶取消:', data.message);
+                        showToast('此訂單已被客戶取消', 'warning');
+
+                        // 移除卡片並加入歷史記錄
+                        card.style.transition = 'all 0.3s ease';
+                        card.style.opacity = '0';
+                        setTimeout(() => {
+                            card.remove();
+                            addOrderToHistory(data.order);
+                            updateCounts();
+                        }, 300);
+                    } else {
+                        console.warn('更新狀態失敗:', data.message);
+                        showToast(data.message || '此訂單無法更新狀態', 'warning');
+                        card.style.opacity = '0';
+                        setTimeout(() => {
+                            card.remove();
+                            updateCounts();
+                        }, 300);
+                    }
                 }
             } catch (error) {
                 console.error('更新狀態失敗:', error);
@@ -952,19 +979,32 @@
 
         // 折疊/展開日期面板
         function toggleCollapse(elementId) {
+            console.log('toggleCollapse 被調用，elementId:', elementId);
+
             const content = document.getElementById(elementId);
             const icon = document.getElementById('icon-' + elementId);
 
-            if (!content || !icon) return;
+            console.log('找到的元素:', {
+                content: !!content,
+                icon: !!icon,
+                contentHidden: content ? content.classList.contains('hidden') : 'N/A'
+            });
+
+            if (!content || !icon) {
+                console.warn('找不到元素，elementId:', elementId);
+                return;
+            }
 
             if (content.classList.contains('hidden')) {
                 // 展開
                 content.classList.remove('hidden');
                 icon.classList.add('rotate-180');
+                console.log('已展開:', elementId);
             } else {
                 // 折疊
                 content.classList.add('hidden');
                 icon.classList.remove('rotate-180');
+                console.log('已折疊:', elementId);
             }
         }
 
@@ -1301,7 +1341,8 @@
 
                     dateGroup.innerHTML = `
                         <button class="w-full flex items-center justify-between p-4 text-left hover:bg-gray-100 transition-colors"
-                                onclick="toggleCollapse('history-${today}')">
+                                data-toggle="collapse"
+                                data-target="history-${today}">
                             <div class="flex items-center space-x-3">
                                 <i class="fas fa-calendar-day text-gray-600"></i>
                                 <div>
@@ -1983,6 +2024,22 @@
 
         // ============ 初始化 ============
 
+        // 使用事件委托处理历史订单日期组的展开/折叠
+        // 这样可以处理动态添加的日期组
+        document.addEventListener('click', function(e) {
+            // 检查是否点击了日期组按钮或其子元素
+            const button = e.target.closest('button[data-toggle="collapse"]');
+            if (button && button.closest('#history-tab')) {
+                // 从 data-target 属性获取目标元素 ID
+                const elementId = button.getAttribute('data-target');
+
+                if (elementId) {
+                    console.log('通过事件委托调用 toggleCollapse:', elementId);
+                    toggleCollapse(elementId);
+                }
+            }
+        });
+
         // 初始化所有訂單卡片的滑動手勢
         document.querySelectorAll('.order-card').forEach(card => {
             initSwipeGesture(card);
@@ -2002,6 +2059,7 @@
 
         // 頁面載入完成
         console.log('訂單管理系統已就緒');
+        console.log('歷史訂單展開功能已使用事件委托初始化');
     </script>
 </body>
 </html>

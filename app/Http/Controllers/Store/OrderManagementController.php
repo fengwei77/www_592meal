@@ -95,7 +95,17 @@ class OrderManagementController extends Controller
      */
     public function confirm(Request $request, $storeSlug, $orderNumber)
     {
-        $order = Order::where('order_number', $orderNumber)->firstOrFail();
+        $order = Order::where('order_number', $orderNumber)->lockForUpdate()->firstOrFail();
+
+        // 檢查訂單是否已被客戶取消
+        if ($order->status === 'cancelled') {
+            return response()->json([
+                'success' => false,
+                'message' => '此訂單已被客戶取消',
+                'cancelled' => true,
+                'order' => $order->load(['orderItems.menuItem'])
+            ], 400);
+        }
 
         // 驗證訂單狀態
         if ($order->status !== 'pending') {
@@ -192,7 +202,17 @@ class OrderManagementController extends Controller
      */
     public function markReady(Request $request, $storeSlug, $orderNumber)
     {
-        $order = Order::where('order_number', $orderNumber)->firstOrFail();
+        $order = Order::where('order_number', $orderNumber)->lockForUpdate()->firstOrFail();
+
+        // 檢查訂單是否已被客戶取消
+        if ($order->status === 'cancelled') {
+            return response()->json([
+                'success' => false,
+                'message' => '此訂單已被客戶取消',
+                'cancelled' => true,
+                'order' => $order->load(['orderItems.menuItem'])
+            ], 400);
+        }
 
         // 驗證訂單狀態
         if ($order->status !== 'confirmed') {
