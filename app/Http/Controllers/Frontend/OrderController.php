@@ -8,6 +8,7 @@ use App\Models\MenuItem;
 use App\Models\Order;
 use App\Models\OrderCancellationLog;
 use App\Models\OrderItem;
+use App\Models\StoreCustomerBlock;
 use App\Services\CartService;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
@@ -23,21 +24,27 @@ class OrderController extends Controller
      */
     public function create(Request $request, $store_slug)
     {
-        // 檢查用戶是否被鎖定訂餐功能
-        if (session('line_logged_in') && session('line_user')) {
-            $lineUserId = session('line_user.user_id');
-            if (CustomerOrderLock::isLocked($lineUserId)) {
-                $lock = CustomerOrderLock::getLock($lineUserId);
-                $lockedUntil = $lock->locked_until->format('Y-m-d H:i:s');
-                return redirect()->route('frontend.store.detail', $store_slug)
-                    ->with('error', "您因取消訂單次數過多，已被暫停訂餐功能至 {$lockedUntil}");
-            }
-        }
-
         // 從路由參數獲取店家
         $store = \App\Models\Store::where('store_slug_name', $store_slug)
                                     ->where('is_active', true)
                                     ->firstOrFail();
+
+        // 檢查用戶是否被該店家鎖定
+        if (session('line_logged_in') && session('line_user')) {
+            $lineUserId = session('line_user.user_id');
+
+            // 檢查店家級別鎖定
+            if (StoreCustomerBlock::isBlockedByStore($lineUserId, $store->id)) {
+                return redirect()->route('frontend.store.detail', $store_slug)
+                    ->with('error', "您已被該店家封鎖，無法訂餐。如需解鎖，請聯絡店家。");
+            }
+
+            // 檢查平台級別鎖定（被3個店家鎖定）
+            if (StoreCustomerBlock::isPlatformBlocked($lineUserId)) {
+                return redirect()->route('platform.blocked')
+                    ->with('error', '您已被多個店家封鎖，無法使用平台。請聯絡系統管理員。');
+            }
+        }
 
         // 生成表單時間戳記，用於防重複提交
         $formTimestamp = time();
@@ -84,20 +91,26 @@ class OrderController extends Controller
             'notes.max' => '備註不能超過 500 個字元',
         ]);
 
-        // 檢查用戶是否被鎖定訂餐功能
-        if (session('line_logged_in') && session('line_user')) {
-            $lineUserId = session('line_user.user_id');
-            if (CustomerOrderLock::isLocked($lineUserId)) {
-                $lock = CustomerOrderLock::getLock($lineUserId);
-                $lockedUntil = $lock->locked_until->format('Y-m-d H:i:s');
-                return back()->with('error', "您因取消訂單次數過多，已被暫停訂餐功能至 {$lockedUntil}");
-            }
-        }
-
         // 從路由參數獲取店家
         $store = \App\Models\Store::where('store_slug_name', $store_slug)
                                     ->where('is_active', true)
                                     ->firstOrFail();
+
+        // 檢查用戶是否被該店家鎖定
+        if (session('line_logged_in') && session('line_user')) {
+            $lineUserId = session('line_user.user_id');
+
+            // 檢查店家級別鎖定
+            if (StoreCustomerBlock::isBlockedByStore($lineUserId, $store->id)) {
+                return back()->with('error', "您已被該店家封鎖，無法訂餐。如需解鎖，請聯絡店家。");
+            }
+
+            // 檢查平台級別鎖定（被3個店家鎖定）
+            if (StoreCustomerBlock::isPlatformBlocked($lineUserId)) {
+                return redirect()->route('platform.blocked')
+                    ->with('error', '您已被多個店家封鎖，無法使用平台。請聯絡系統管理員。');
+            }
+        }
 
         $cartService = new CartService();
 
@@ -304,22 +317,10 @@ class OrderController extends Controller
         try {
             DB::beginTransaction();
 
-            // 檢查用戶是否被鎖定
-            if (CustomerOrderLock::isLocked($lineUserId)) {
-                $lock = CustomerOrderLock::getLock($lineUserId);
-                $lockedUntil = $lock->locked_until->format('Y-m-d H:i:s');
-
-                DB::rollBack();
-                return response()->json([
-                    'success' => false,
-                    'message' => "您因取消訂單次數過多，已被暫停訂餐功能至 {$lockedUntil}",
-                    'locked_until' => $lockedUntil
-                ], 403);
-            }
-
             // 查詢訂單並確認屬於當前用戶
             $order = Order::where('order_number', $orderNumber)
                 ->where('line_user_id', $lineUserId)
+                ->with('store')
                 ->lockForUpdate()
                 ->first();
 
@@ -331,6 +332,17 @@ class OrderController extends Controller
                 ], 404);
             }
 
+            $storeId = $order->store_id;
+
+            // 檢查用戶是否被該店家鎖定
+            if (StoreCustomerBlock::isBlockedByStore($lineUserId, $storeId)) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => '您已被該店家封鎖，無法取消訂單。如需解鎖，請聯絡店家。'
+                ], 403);
+            }
+
             // 檢查訂單是否可以取消 (只有 pending 或 confirmed 狀態可以取消)
             if (!in_array($order->status, ['pending', 'confirmed'])) {
                 DB::rollBack();
@@ -340,27 +352,26 @@ class OrderController extends Controller
                 ], 400);
             }
 
-            // 檢查30分鐘內的取消次數
-            $recentCancellations = OrderCancellationLog::getCancellationCount($lineUserId, 30);
-            if ($recentCancellations >= 3) {
+            // 檢查在該店家的取消次數
+            $storeCancellations = OrderCancellationLog::getStoreCancellationCount($lineUserId, $storeId);
+
+            if ($storeCancellations >= 10) {
+                // 鎖定用戶在該店家的訂餐權限
+                StoreCustomerBlock::blockCustomer(
+                    $storeId,
+                    $lineUserId,
+                    $order->customer_id,
+                    $storeCancellations + 1,
+                    'exceed_cancellation_limit',
+                    'system',
+                    '在該店家取消訂單超過10次'
+                );
+
                 DB::rollBack();
                 return response()->json([
                     'success' => false,
-                    'message' => '您在30分鐘內已取消3次訂單，請稍後再試'
-                ], 429);
-            }
-
-            // 檢查今日的取消次數
-            $todayCancellations = OrderCancellationLog::getTodayCancellationCount($lineUserId);
-            if ($todayCancellations >= 10) {
-                // 鎖定用戶24小時
-                CustomerOrderLock::lockUser($lineUserId, 24, $todayCancellations + 1);
-
-                DB::rollBack();
-                return response()->json([
-                    'success' => false,
-                    'message' => '您今日已取消10次訂單，已被暫停訂餐功能24小時',
-                    'locked' => true
+                    'message' => '您在該店家已取消10次訂單，已被該店家封鎖。如需解鎖，請聯絡店家。',
+                    'blocked' => true
                 ], 429);
             }
 
@@ -379,18 +390,16 @@ class OrderController extends Controller
                 $request->ip()
             );
 
+            $newCancellationCount = $storeCancellations + 1;
+
             DB::commit();
 
             // 檢查是否需要警告用戶
-            $newTodayCount = $todayCancellations + 1;
             $warningMessage = null;
 
-            if ($newTodayCount >= 8) {
-                $remainingCount = 10 - $newTodayCount;
-                $warningMessage = "提醒：您今日已取消 {$newTodayCount} 次訂單，再取消 {$remainingCount} 次將被暫停訂餐功能24小時";
-            } elseif ($recentCancellations + 1 >= 2) {
-                $remainingCount = 3 - ($recentCancellations + 1);
-                $warningMessage = "提醒：您在30分鐘內已取消 " . ($recentCancellations + 1) . " 次訂單，再取消 {$remainingCount} 次將無法繼續取消訂單";
+            if ($newCancellationCount >= 8) {
+                $remainingCount = 10 - $newCancellationCount;
+                $warningMessage = "提醒：您在該店家已取消 {$newCancellationCount} 次訂單，再取消 {$remainingCount} 次將被該店家封鎖";
             }
 
             return response()->json([
@@ -398,8 +407,8 @@ class OrderController extends Controller
                 'message' => '訂單已成功取消',
                 'warning' => $warningMessage,
                 'cancellation_stats' => [
-                    'today_count' => $newTodayCount,
-                    'recent_count' => $recentCancellations + 1
+                    'store_count' => $newCancellationCount,
+                    'store_name' => $order->store->name
                 ]
             ]);
 

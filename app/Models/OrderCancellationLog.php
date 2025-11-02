@@ -47,6 +47,18 @@ class OrderCancellationLog extends Model
     }
 
     /**
+     * 獲取在特定店家的取消次數
+     */
+    public static function getStoreCancellationCount(string $lineUserId, int $storeId): int
+    {
+        return static::where('line_user_id', $lineUserId)
+            ->whereHas('order', function ($query) use ($storeId) {
+                $query->where('store_id', $storeId);
+            })
+            ->count();
+    }
+
+    /**
      * 記錄取消動作
      */
     public static function logCancellation(string $lineUserId, int $orderId, ?string $ipAddress = null): self

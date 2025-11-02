@@ -151,6 +151,11 @@ Route::domain(parse_url(config('app.url'), PHP_URL_HOST))->group(function () {
     Route::get('/order/{orderNumber}', [OrderController::class, 'show'])->name('frontend.order.show');
     Route::post('/order/{orderNumber}/cancel', [OrderController::class, 'cancel'])->name('frontend.order.cancel');
 
+    // 平台封鎖頁面
+    Route::get('/platform-blocked', function () {
+        return view('frontend.platform-blocked');
+    })->name('platform.blocked');
+
     // 顧客通知設定相關路由（需要 LINE 登入）
     Route::prefix('customer/notifications')->group(function () {
         Route::get('/settings', [\App\Http\Controllers\Customer\NotificationSettingsController::class, 'index'])

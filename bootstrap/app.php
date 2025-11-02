@@ -27,6 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
         if ($env !== 'testing') {
             $middleware->web(append: [
                 \App\Http\Middleware\CheckAdminDomain::class,
+                \App\Http\Middleware\CheckPlatformBlock::class,
             ]);
         }
 
@@ -36,6 +37,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'store.access' => \App\Http\Middleware\VerifyStoreAccess::class,
             'staff.auth' => \App\Http\Middleware\StaffAuthenticate::class,
             'prevent.duplicate' => \App\Http\Middleware\PreventDuplicateSubmission::class,
+            'platform.block.check' => \App\Http\Middleware\CheckPlatformBlock::class,
         ]);
     })
     ->withSchedule(function (Schedule $schedule): void {
