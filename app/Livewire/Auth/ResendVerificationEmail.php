@@ -49,10 +49,16 @@ class ResendVerificationEmail extends Component
         }
     }
 
-    public function updated($propertyName): void
-    {
-        $this->validateOnly($propertyName);
-    }
+    /**
+     * 移除即時驗證，只在提交時驗證
+     * 避免頁面初始加載時觸發驗證錯誤
+     */
+    // public function updated($propertyName): void
+    // {
+    //     if ($propertyName === 'email' && !empty($this->email)) {
+    //         $this->validateOnly($propertyName);
+    //     }
+    // }
 
     public function resend(): void
     {

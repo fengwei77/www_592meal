@@ -16,7 +16,7 @@
                 </label>
                 <div class="mt-1 relative">
                     <input
-                        wire:model.blur="email"
+                        wire:model="email"
                         type="email"
                         id="email"
                         class="block w-full px-3 py-2 border rounded-md shadow-sm focus:ring-2 focus:ring-offset-0 sm:text-sm transition-colors @error('email') border-red-500 bg-red-50 focus:ring-red-500 focus:border-red-500 @else border-gray-300 focus:ring-indigo-500 focus:border-indigo-500 @enderror"
