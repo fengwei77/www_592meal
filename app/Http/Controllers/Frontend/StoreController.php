@@ -425,7 +425,7 @@ class StoreController extends Controller
                 'address' => $store->address,
                 'city' => $store->city,
                 'area' => $store->area,
-                'full_address' => $store->getFullAddress(),
+                'full_address' => $store->full_address,
                 'latitude' => $store->latitude,
                 'longitude' => $store->longitude,
                 'logo_url' => $store->logo_url,

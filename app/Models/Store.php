@@ -930,4 +930,45 @@ class Store extends Model implements HasMedia
 
         return $slug;
     }
+
+    /**
+     * 取得座標資訊
+     *
+     * @return array
+     */
+    public function getCoordinateInfo(): array
+    {
+        return [
+            'has_coordinates' => $this->hasCoordinates(),
+            'needs_geocoding' => $this->needsGeocoding(),
+            'latitude' => $this->latitude,
+            'longitude' => $this->longitude,
+        ];
+    }
+
+    /**
+     * 檢查是否需要地理編碼
+     *
+     * @return bool
+     */
+    public function needsGeocoding(): bool
+    {
+        // 如果已有座標，則不需要
+        if ($this->hasCoordinates()) {
+            return false;
+        }
+
+        // 如果有地址，則需要地理編碼
+        return !empty($this->address);
+    }
+
+    /**
+     * 檢查是否有座標
+     *
+     * @return bool
+     */
+    public function hasCoordinates(): bool
+    {
+        return $this->latitude !== null && $this->longitude !== null;
+    }
 }

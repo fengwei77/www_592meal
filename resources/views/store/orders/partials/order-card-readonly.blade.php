@@ -78,6 +78,21 @@
         </div>
     </div>
 
+    <!-- 備註 -->
+    @if($order->notes)
+        <div class="border-t mt-3 pt-3">
+            <div class="flex items-start space-x-2">
+                <i class="fas fa-comment-dots text-orange-500 mt-0.5"></i>
+                <div class="flex-1">
+                    <div class="text-xs font-medium text-gray-700 mb-1">顧客備註</div>
+                    <div class="rounded p-2" style="background-color: yellow; color: red; font-weight: bolder; font-size: x-large;">
+                        {{ $order->notes }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+
     <!-- 取消原因 -->
     @if($order->status === 'cancelled' && $order->cancellation_reason)
         <div class="border-t mt-3 pt-3">

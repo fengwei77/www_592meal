@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Filament\Models\Contracts\FilamentUser;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -17,7 +18,7 @@ use Spatie\Permission\Traits\HasRoles;
  * - super_admin: 超級管理員（可審核 LINE Pay、管理所有店家）
  * - store_owner: 店家（可管理自己的產品、訂單、設定）
  */
-class User extends Authenticatable implements MustVerifyEmail
+class User extends Authenticatable implements MustVerifyEmail, FilamentUser
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable, HasRoles;

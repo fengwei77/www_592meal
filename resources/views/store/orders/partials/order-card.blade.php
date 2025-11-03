@@ -131,7 +131,7 @@
                 <i class="fas fa-comment-dots text-orange-500 mt-0.5"></i>
                 <div class="flex-1">
                     <div class="text-xs font-medium text-gray-700 mb-1">顧客備註</div>
-                    <div class="text-sm text-gray-600 bg-orange-50 rounded p-2">
+                    <div class="rounded p-2" style="background-color: yellow; color: red; font-weight: bolder; font-size: x-large;">
                         {{ $order->notes }}
                     </div>
                 </div>
