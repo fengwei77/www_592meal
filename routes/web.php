@@ -58,6 +58,11 @@ Route::domain(parse_url(config('app.url'), PHP_URL_HOST))->group(function () {
         return view('auth.merchant-register');
     })->name('merchant.register');
 
+    // Resend Verification Email Route
+    Route::get('/resend-verification', function () {
+        return view('auth.resend-verification');
+    })->name('verification.resend');
+
     // Email Verification Routes (Story 1.3)
     Route::get('/email/verify', EmailVerificationForm::class)->name('verification.notice');
     Route::post('/email/verify', [EmailVerificationController::class, 'verify'])->middleware(['throttle:6,1'])->name('verification.verify');
