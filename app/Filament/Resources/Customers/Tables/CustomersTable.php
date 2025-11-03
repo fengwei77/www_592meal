@@ -5,9 +5,8 @@ namespace App\Filament\Resources\Customers\Tables;
 use App\Models\OrderCancellationLog;
 use App\Models\Store;
 use App\Models\StoreCustomerBlock;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Tables\Actions\Action;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -236,7 +235,7 @@ class CustomersTable
                                 ->default(array_keys($availableStores))
                                 ->helperText('選擇要封鎖此客戶的店家'),
 
-                            \Filament\Forms\Components\Textarea::make('notes')
+                            Textarea::make('notes')
                                 ->label('封鎖原因')
                                 ->required()
                                 ->placeholder('請輸入封鎖原因，例如：重複取消訂單、惡意下單等')
@@ -357,7 +356,7 @@ class CustomersTable
                         return StoreCustomerBlock::where('line_user_id', $record->line_id)->exists();
                     })
                     ->form([
-                        \Filament\Forms\Components\Textarea::make('reason')
+                        Textarea::make('reason')
                             ->label('解鎖原因')
                             ->required()
                             ->placeholder('請輸入解鎖原因，例如：客戶申訴成功、誤封等')
