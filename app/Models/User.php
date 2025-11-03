@@ -70,6 +70,7 @@ class User extends Authenticatable implements MustVerifyEmail, FilamentUser
     {
         return [
             'email_verified_at' => 'datetime',
+            'email_verification_code_expires_at' => 'datetime',
             'password' => 'hashed',
             'ip_whitelist_enabled' => 'boolean',
             'ip_whitelist' => 'array',
