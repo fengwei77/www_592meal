@@ -74,37 +74,41 @@
                         @enderror
                     </div>
 
-                    <!-- 電話 -->
-                    <div>
-                        <label for="phone" class="block text-sm font-medium text-gray-700 mb-2">
-                            電話 <span class="text-red-500">*</span>
-                        </label>
-                        <input type="tel"
-                               id="phone"
-                               name="phone"
-                               value="{{ old('phone') }}"
-                               required
-                               maxlength="20"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                               placeholder="請輸入您的電話號碼">
-                        @error('phone')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                        @enderror
-                    </div>
-
                     <!-- 電子郵件 -->
                     <div>
                         <label for="email" class="block text-sm font-medium text-gray-700 mb-2">
-                            電子郵件
+                            電子郵件 <span class="text-red-500">*</span>
                         </label>
                         <input type="email"
                                id="email"
                                name="email"
                                value="{{ old('email') }}"
+                               required
                                maxlength="255"
                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                               placeholder="請輸入您的電子郵件">
+                               placeholder="請輸入您的電子郵件（例如：user@example.com）">
                         @error('email')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                        <p class="mt-1 text-xs text-gray-500">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            我們會將回覆訊息寄送至您的電子郵件
+                        </p>
+                    </div>
+
+                    <!-- 電話 -->
+                    <div>
+                        <label for="phone" class="block text-sm font-medium text-gray-700 mb-2">
+                            電話（選填）
+                        </label>
+                        <input type="tel"
+                               id="phone"
+                               name="phone"
+                               value="{{ old('phone') }}"
+                               maxlength="20"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                               placeholder="請輸入您的電話號碼（選填）">
+                        @error('phone')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
