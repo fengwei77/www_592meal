@@ -54,15 +54,50 @@ class EditProfile extends Page implements HasForms
                     ])
                     ->columns(2),
 
+                \Filament\Schemas\Components\Section::make('密碼資訊')
+                    ->schema([
+                        Forms\Components\Placeholder::make('current_password_info')
+                            ->label('目前密碼')
+                            ->content(function () {
+                                $user = Auth::user();
+                                // 檢查用戶是否有設定密碼
+                                if ($user && $user->password) {
+                                    return '✅ 已設定密碼';
+                                } else {
+                                    return '❌ 尚未設定密碼';
+                                }
+                            })
+                            ->extraAttributes(['class' => 'font-medium'])
+                            ->helperText('您的密碼已加密儲存，系統無法顯示實際密碼內容'),
+
+                        Forms\Components\Placeholder::make('password_strength')
+                            ->label('密碼安全性')
+                            ->content(function () {
+                                $user = Auth::user();
+                                if ($user && $user->password) {
+                                    return '🔒 密碼已加密保護';
+                                } else {
+                                    return '⚠️ 建議設定密碼以保護帳戶安全';
+                                }
+                            })
+                            ->extraAttributes(['class' => 'text-sm']),
+                    ])
+                    ->columns(2),
+
                 \Filament\Schemas\Components\Section::make('變更密碼')
                     ->schema([
+                        Forms\Components\Placeholder::make('change_password_info')
+                            ->label('密碼變更說明')
+                            ->content('如需變更密碼，請填寫下方表單')
+                            ->extraAttributes(['class' => 'text-sm text-gray-600 mb-4']),
+
                         Forms\Components\TextInput::make('current_password')
-                            ->label('目前密碼')
+                            ->label('目前密碼 (驗證用)')
                             ->password()
                             ->dehydrated(false)
                             ->requiredWith('password')
                             ->currentPassword()
-                            ->helperText('若要變更密碼，請先輸入目前的密碼'),
+                            ->helperText('為了安全，變更密碼時需要輸入目前的密碼進行驗證'),
 
                         Forms\Components\TextInput::make('password')
                             ->label('新密碼')
@@ -70,13 +105,14 @@ class EditProfile extends Page implements HasForms
                             ->dehydrated(fn ($state) => filled($state))
                             ->rule(Password::default())
                             ->same('password_confirmation')
-                            ->helperText('至少 8 個字元'),
+                            ->helperText('至少 8 個字元，建議包含大小寫字母、數字和符號'),
 
                         Forms\Components\TextInput::make('password_confirmation')
                             ->label('確認新密碼')
                             ->password()
                             ->dehydrated(false)
-                            ->requiredWith('password'),
+                            ->requiredWith('password')
+                            ->helperText('請再次輸入新密碼以確認無誤'),
                     ])
                     ->columns(1)
                     ->collapsible()
