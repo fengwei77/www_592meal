@@ -88,16 +88,8 @@ class EditProfile extends Page implements HasForms
                     ->schema([
                         Forms\Components\Placeholder::make('change_password_info')
                             ->label('密碼變更說明')
-                            ->content('如需變更密碼，請填寫下方表單')
+                            ->content('如需變更密碼，請設定新密碼並確認')
                             ->extraAttributes(['class' => 'text-sm text-gray-600 mb-4']),
-
-                        Forms\Components\TextInput::make('current_password')
-                            ->label('目前密碼 (驗證用)')
-                            ->password()
-                            ->dehydrated(false)
-                            ->requiredWith('password')
-                            ->currentPassword()
-                            ->helperText('為了安全，變更密碼時需要輸入目前的密碼進行驗證'),
 
                         Forms\Components\TextInput::make('password')
                             ->label('新密碼')
@@ -134,6 +126,20 @@ class EditProfile extends Page implements HasForms
             // 如果有填寫新密碼，則更新密碼
             if (filled($data['password'] ?? null)) {
                 $user->password = Hash::make($data['password']);
+
+                // 如果更新了密碼，添加成功訊息
+                Notification::make()
+                    ->success()
+                    ->title('密碼已變更')
+                    ->body('您的密碼已成功變更，請使用新密碼登入。')
+                    ->send();
+            } else {
+                // 如果只更新基本資料，顯示一般成功訊息
+                Notification::make()
+                    ->success()
+                    ->title('個人資料已更新')
+                    ->body('您的個人資料已成功更新。')
+                    ->send();
             }
 
             $user->save();
@@ -142,12 +148,6 @@ class EditProfile extends Page implements HasForms
             $this->form->fill([
                 'name' => $user->name,
             ]);
-
-            Notification::make()
-                ->success()
-                ->title('個人資料已更新')
-                ->body('您的個人資料已成功更新。')
-                ->send();
 
         } catch (Halt $exception) {
             return;
