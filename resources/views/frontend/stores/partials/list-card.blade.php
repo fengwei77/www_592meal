@@ -17,7 +17,7 @@
     };
 @endphp
 
-<div class="store-card group cursor-pointer bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100" onclick="window.location.href='{{ $storeUrl }}'">
+<div class="store-card group cursor-pointer bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 my-4" onclick="window.location.href='{{ $storeUrl }}'">
     <!-- 店家圖片區域 -->
     <div class="relative h-48 overflow-hidden bg-gradient-to-br from-blue-50 to-purple-50">
         @if($store->logo_url)

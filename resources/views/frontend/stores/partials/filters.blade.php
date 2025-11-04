@@ -94,8 +94,9 @@
                     id="area-filter"
                     class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white transition-all duration-200 disabled:bg-gray-50 disabled:text-gray-500"
                     {{ request('city') ? '' : 'disabled' }}
+                    style="appearance: auto !important; -webkit-appearance: auto !important; -moz-appearance: auto !important;"
                 >
-                    <option value="">請先選擇縣市</option>
+                    <option value="">請選擇區域</option>
                     @if(request('city'))
                         @foreach($filters['areas'] ?? [] as $area)
                             <option value="{{ $area }}" {{ request('area') == $area ? 'selected' : '' }}>
@@ -174,42 +175,54 @@
 </div>
 
 <script>
+// 台灣縣市區域資料
+const taiwanCitiesAreas = {
+    '台北市': ['中正區', '大同區', '中山區', '松山區', '大安區', '萬華區', '信義區', '士林區', '北投區', '內湖區', '南港區', '文山區'],
+    '新北市': ['板橋區', '三重區', '中和區', '永和區', '新莊區', '新店區', '土城區', '蘆洲區', '樹林區', '鶯歌區', '三峽區', '淡水區', '汐止區', '瑞芳區', '五股區', '泰山區', '林口區', '深坑區', '石碇區', '坪林區', '三芝區', '石門區', '八里區', '平溪區', '雙溪區', '貢寮區', '金山区', '萬里區', '烏來區'],
+    '桃園市': ['桃園區', '中壢區', '平鎮區', '八德區', '楊梅區', '蘆竹區', '大溪區', '龍潭區', '龜山區', '大園區', '觀音區', '新屋區'],
+    '台中市': ['中西區', '東區', '南區', '西區', '北區', '北屯區', '西屯區', '南屯區', '太平區', '大里區', '霧峰區', '烏日區', '豐原區', '后里區', '石岡區', '東勢區', '和平區', '新社區', '潭子區', '大雅區', '神岡區', '大肚區', '沙鹿區', '龍井區', '梧棲區', '清水區', '大甲區', '外埔區', '大安區'],
+    '台南市': ['中西區', '東區', '南區', '北區', '安平區', '安南區', '永康區', '歸仁區', '新化區', '左鎮區', '玉井區', '楠西區', '南化區', '仁德區', '關廟區', '龍崎區', '官田區', '麻豆區', '佳里區', '西港區', '七股區', '將軍區', '學甲區', '北門區', '新營區', '後壁區', '白河區', '東山區', '六甲區', '下營區', '柳營區', '鹽水區', '善化區', '大內區', '山上區', '新市區', '安定區'],
+    '高雄市': ['楠梓區', '左營區', '鼓山區', '三民區', '鹽埕區', '前金區', '新興區', '苓雅區', '前鎮區', '旗津區', '小港區', '鳳山區', '林園區', '大寮區', '大樹區', '大社區', '仁武區', '鳥松區', '岡山區', '橋頭區', '燕巢區', '田寮區', '阿蓮區', '路竹區', '湖內區', '茄萣區', '永安區', '彌陀區', '梓官區', '旗山區', '美濃區', '六龜區', '甲仙區', '杉林區', '內門區', '茂林區', '桃源區', '那瑪夏區'],
+    '基隆市': ['仁愛區', '信義區', '中正區', '中山區', '安樂區', '七堵區', '暖暖區', '中山区'],
+    '新竹市': ['東區', '北區', '香山區'],
+    '新竹縣': ['竹北市', '竹東鎮', '新埔鎮', '關西鎮', '湖口鄉', '新豐鄉', '芎林鄉', '橫山鄉', '北埔鄉', '寶山鄉', '峨眉鄉', '五峰鄉', '尖石鄉'],
+    '嘉義市': ['東區', '西區'],
+    '嘉義縣': ['太保市', '朴子市', '布袋鎮', '大林鎮', '民雄鄉', '溪口鄉', '新港鄉', '六腳鄉', '東石鄉', '義竹鄉', '鹿草鄉', '水上鄉', '中埔鄉', '竹崎鄉', '梅山鄉', '番路鄉', '大埔鄉', '阿里山鄉'],
+    '宜蘭縣': ['宜蘭市', '羅東鎮', '蘇澳鎮', '頭城鎮', '礁溪鄉', '壯圍鄉', '員山鄉', '冬山鄉', '五結鄉', '三星鄉', '大同鄉', '南澳鄉'],
+    '花蓮縣': ['花蓮市', '吉安鄉', '壽豐鄉', '秀林鄉', '玉里鎮', '新城鄉', '光復鄉', '豐濱鄉', '瑞穗鄉', '萬榮鄉', '鳳林鎮', '富里鄉', '卓溪鄉'],
+    '台東縣': ['台東市', '成功鎮', '關山鎮', '卑南鄉', '鹿野鄉', '池上鄉', '東河鄉', '長濱鄉', '太麻里鄉', '大武鄉', '綠島鄉', '海端鄉', '延平鄉', '金峰鄉', '達仁鄉', '蘭嶼鄉'],
+    '澎湖縣': ['馬公市', '湖西鄉', '白沙鄉', '西嶼鄉', '望安鄉', '七美鄉'],
+    '金門縣': ['金城鎮', '金沙鎮', '金湖鎮', '金寧鄉', '烈嶼鄉', '烏坵鄉'],
+    '連江縣': ['南竿鄉', '北竿鄉', '莒光鄉', '東引鄉']
+};
+
 // 更新區域選項
 function updateAreas(city) {
     const areaSelect = document.getElementById('area-filter');
-    const currentArea = '{{ request("area") }}';
 
-    // 重置區域選項
-    areaSelect.innerHTML = '<option value="">請選擇區域</option>';
-
-    if (!city) {
-        areaSelect.disabled = true;
+    if (!areaSelect) {
         return;
     }
 
-    areaSelect.disabled = false;
+    // 重置區域選項
+    let optionsHtml = '<option value="">請選擇區域</option>';
 
-    // 載入該縣市的區域
-    fetch('/api/stores/filters')
-        .then(response => response.json())
-        .then(data => {
-            // 這裡可以添加邏輯來根據縣市過濾區域
-            // 目前顯示所有區域
-            const areas = data.areas || [];
+    if (city && city.trim() !== '') {
+        const areas = taiwanCitiesAreas[city];
 
-            areas.forEach(area => {
-                const option = document.createElement('option');
-                option.value = area;
-                option.textContent = area;
-                if (area === currentArea) {
-                    option.selected = true;
-                }
-                areaSelect.appendChild(option);
+        if (areas && Array.isArray(areas) && areas.length > 0) {
+            areas.forEach(function(areaName) {
+                optionsHtml += '<option value="' + areaName + '">' + areaName + '</option>';
             });
-        })
-        .catch(error => {
-            console.error('載入區域失敗:', error);
-        });
+        } else {
+            optionsHtml += '<option value="" disabled>此縣市暫無區域資料</option>';
+        }
+    }
+
+    areaSelect.innerHTML = optionsHtml;
+
+    // 更新 disabled 狀態
+    areaSelect.disabled = !city || city.trim() === '';
 }
 
 // 篩選附近店家
@@ -250,20 +263,7 @@ async function filterNearbyStores() {
         url.searchParams.set('lat', latitude);
         url.searchParams.set('lng', longitude);
 
-        // 如果是地圖視圖，直接更新地圖
-        if (state.currentView === 'map') {
-            state.userLocation = { latitude, longitude };
-            await loadMapStoresWithDistance();
-
-            // 切換到地圖視圖並更新地圖中心
-            switchView('map');
-            state.map.setView([latitude, longitude], 14);
-
-            showToast('定位成功！已顯示附近店家', 'success');
-        } else {
-            // 如果是列表視圖，重新載入頁面
-            window.location.href = url.toString();
-        }
+        window.location.href = url.toString();
 
     } catch (error) {
         let errorMessage = '無法取得您的位置';
@@ -281,7 +281,6 @@ async function filterNearbyStores() {
         }
 
         showToast(errorMessage, 'error');
-        console.error('定位錯誤:', error);
 
     } finally {
         // 恢復按鈕狀態
@@ -305,22 +304,15 @@ function clearFilters() {
     areaSelect.disabled = true;
     areaSelect.innerHTML = '<option value="">請先選擇縣市</option>';
 
-    // 清除附近篩選狀態
-    state.userLocation = null;
-    if (state.userLocationMarker) {
-        state.map.removeLayer(state.userLocationMarker);
-        state.userLocationMarker = null;
-    }
-
     // 提交表單
     form.submit();
 }
 
 // 初始化
 document.addEventListener('DOMContentLoaded', function() {
-    // 如果有選擇縣市，初始化區域選項
     const citySelect = document.getElementById('city-filter');
-    if (citySelect.value) {
+
+    if (citySelect && citySelect.value) {
         updateAreas(citySelect.value);
     }
 });

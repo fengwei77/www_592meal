@@ -35,8 +35,16 @@
     /* 全域樣式重置 */
     .store-grid {
         display: grid;
-        gap: 2rem;
+        gap: 1.5rem;
         grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    }
+
+    /* 桌面模式增加間距 */
+    @media (min-width: 1024px) {
+        .store-grid {
+            gap: 3rem;
+            padding: 1rem 0;
+        }
     }
 
     /* 美化滾動條 */
@@ -518,7 +526,7 @@
 @endsection
 
 @section('content')
-<div class="container mx-auto px-4 py-8">
+<div class="container mx-auto px-4 py-6 lg:py-8">
     <!-- 頁面標題 -->
     <div class="text-center mb-8">
         <h1 class="text-4xl font-bold text-gray-900 mb-4">發現美食店家</h1>
@@ -529,7 +537,7 @@
     @include('frontend.stores.partials.search-bar')
 
     <!-- 統計資訊 - 升級版設計 -->
-    <div class="stats-section grid gap-4 grid-cols-2 lg:grid-cols-4">
+    <div class="stats-section grid gap-4 grid-cols-2 lg:grid-cols-4 mb-6 lg:mb-8">
 
     <div class="stat-card bg-white p-6 rounded-lg shadow-md">
         <div class="flex items-baseline justify-center space-x-2">
@@ -569,7 +577,7 @@
     @include('frontend.stores.partials.filters')
 
     <!-- 檢視模式切換 -->
-    <div class="view-tabs">
+    <div class="view-tabs mb-6 lg:mb-8">
         <button class="view-tab {{ $view == 'list' ? 'active' : '' }}" onclick="switchView('list')">
             📋 列表模式
         </button>
@@ -597,7 +605,7 @@
 
             <!-- 分頁 -->
             @if($stores->hasPages())
-                <div class="mt-8 flex justify-center">
+                <div class="mt-8 lg:mt-12 flex justify-center">
                     {{ $stores->links() }}
                 </div>
             @endif

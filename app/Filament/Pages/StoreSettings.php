@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Auth;
 
 class StoreSettings extends Page
 {
-    // protected static ?string $navigationIcon = 'heroicon-o-cog-6-tooth';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-cog-6-tooth';
 
     protected string $view = 'filament.pages.store-settings';
 
