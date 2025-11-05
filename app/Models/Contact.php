@@ -33,6 +33,9 @@ class Contact extends Model
         'send_notification',
         'replied_at',
         'replied_by',
+        'store_id',
+        'ip_address',
+        'user_agent',
     ];
 
     protected $casts = [
@@ -126,6 +129,14 @@ class Contact extends Model
     public function replier()
     {
         return $this->belongsTo(User::class, 'replied_by');
+    }
+
+    /**
+     * 獲取相關店家（可選）
+     */
+    public function store()
+    {
+        return $this->belongsTo(Store::class);
     }
 
     /**

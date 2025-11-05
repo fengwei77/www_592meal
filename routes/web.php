@@ -13,6 +13,7 @@ use App\Http\Controllers\Frontend\CartController;
 use App\Http\Controllers\Frontend\OrderController;
 use App\Http\Controllers\Frontend\StoreController;
 use App\Http\Controllers\Store\OrderManagementController;
+use App\Http\Controllers\ContactController;
 
 /**
  * 全域驗證碼路由 - 所有域名都可訪問
@@ -130,9 +131,8 @@ Route::domain(parse_url(config('app.url'), PHP_URL_HOST))->group(function () {
     })->name('frontend.about');
 
     // 聯絡我們頁面
-    Route::get('/contact', function () {
-        return view('frontend.contact');
-    })->name('frontend.contact');
+    Route::get('/contact', [ContactController::class, 'index'])->name('frontend.contact');
+    Route::post('/contact', [ContactController::class, 'submit'])->name('contact.submit');
 
     Route::middleware(['auth'])->group(function () {
         // 店家儀表板（需要登入）
