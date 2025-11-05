@@ -36,11 +36,13 @@ class Contact extends Model
         'store_id',
         'ip_address',
         'user_agent',
+        'phone_notification_sent_at',
     ];
 
     protected $casts = [
         'send_notification' => 'boolean',
         'replied_at' => 'datetime',
+        'phone_notification_sent_at' => 'datetime',
     ];
 
     /**
@@ -161,5 +163,74 @@ class Contact extends Model
     public function scopeResolved($query)
     {
         return $query->where('status', self::STATUS_RESOLVED);
+    }
+
+    /**
+     * 檢查是否應該發送電話通知
+     */
+    public function shouldSendPhoneNotification(): bool
+    {
+        return !empty($this->phone) &&
+               $this->send_notification &&
+               empty($this->phone_notification_sent_at);
+    }
+
+    /**
+     * 發送電話通知（這裡可以整合第三方簡訊服務）
+     */
+    public function sendPhoneNotification(string $message): bool
+    {
+        try {
+            // 這裡可以整合第三方簡訊服務，如：
+            // - 台灣大哥大 mySms
+            // - 中華電信 Hami SMS
+            // - 遠傳電信 Ezone
+            // - Twilio
+            // - SendGrid SMS
+
+            // 暫時記錄日誌，實際發送需要第三方服務
+            \Log::info("發送電話通知給 {$this->phone}: {$message}");
+
+            // 模擬發送成功
+            return true;
+
+        } catch (\Exception $e) {
+            \Log::error("電話通知發送失敗: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * 記錄通知已發送
+     */
+    public function recordNotificationSent(): bool
+    {
+        $this->phone_notification_sent_at = now();
+        return $this->save();
+    }
+
+    /**
+     * 檢查電話通知是否已發送
+     */
+    public function hasPhoneNotificationSent(): bool
+    {
+        return !empty($this->phone_notification_sent_at);
+    }
+
+    /**
+     * 發送回覆通知給用戶
+     */
+    public function sendReplyNotification(string $replyMessage): bool
+    {
+        try {
+            // 這裡可以發送郵件或簡訊通知給用戶
+            // 暫時使用日誌記錄
+            \Log::info("發送回覆通知給 {$this->email}: {$replyMessage}");
+
+            return true;
+        } catch (\Exception $e) {
+            \Log::error("回覆通知發送失敗: " . $e->getMessage());
+            return false;
+        }
     }
 }
