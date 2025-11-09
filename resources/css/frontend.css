@@ -1,0 +1,144 @@
+/* 前台專用字型和顏色樣式 */
+
+/* 字型定義 */
+.reenie-beanie-regular {
+    font-family: "Reenie Beanie", cursive;
+    font-weight: 400;
+    font-style: normal;
+}
+
+.chocolate-classical-sans-regular {
+    font-family: "Chocolate Classical Sans", sans-serif;
+    font-weight: 400;
+    font-style: normal;
+}
+
+/* 網站名稱字型 */
+.site-name {
+    font-family: "Reenie Beanie", cursive;
+    font-weight: 400;
+    font-style: normal;
+    color: #FB923C; /* 橘色 */
+}
+
+/* 前台標題字型 */
+.frontend-title {
+    font-family: "Chocolate Classical Sans", sans-serif;
+    font-weight: 400;
+    font-style: normal;
+}
+
+/* 前台內容字型 */
+.frontend-content {
+    font-family: "Chocolate Classical Sans", sans-serif;
+    font-weight: 400;
+    font-style: normal;
+}
+
+/* 橘色美食主題 */
+.food-orange {
+    color: #FB923C;
+}
+
+.food-orange-bg {
+    background-color: #FB923C;
+}
+
+.food-orange-hover:hover {
+    color: #F97316;
+}
+
+.food-orange-border {
+    border-color: #FB923C;
+}
+
+/* 橘色漸變效果 */
+.food-orange-gradient {
+    background: linear-gradient(135deg, #FB923C, #F97316);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* 美食相關標題樣式 */
+.food-title {
+    font-family: "Reenie Beanie", cursive;
+    font-weight: 400;
+    font-style: normal;
+    color: #FB923C;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* 選單項目標題 */
+.menu-title {
+    font-family: "Chocolate Classical Sans", sans-serif;
+    font-weight: 400;
+    font-style: normal;
+}
+
+/* 價格標籤樣式 */
+.price-food {
+    font-family: "Chocolate Classical Sans", sans-serif;
+    font-weight: 600;
+    color: #FB923C;
+}
+
+/* 按鈕樣式 */
+.btn-food-primary {
+    font-family: "Chocolate Classical Sans", sans-serif;
+    font-weight: 500;
+    background-color: #FB923C;
+    color: white;
+    border: none;
+    transition: all 0.3s ease;
+}
+
+.btn-food-primary:hover {
+    background-color: #F97316;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(251, 146, 60, 0.3);
+}
+
+/* 導航連結樣式 */
+.nav-food {
+    font-family: "Chocolate Classical Sans", sans-serif;
+    color: #FB923C;
+}
+
+.nav-food:hover {
+    color: #F97316;
+}
+
+/* 頁腳樣式 */
+.footer-food {
+    font-family: "Chocolate Classical Sans", sans-serif;
+}
+
+/* 響應式設計 */
+@media (max-width: 768px) {
+    .site-name {
+        font-size: 1.5rem;
+    }
+
+    .food-title {
+        font-size: 1.75rem;
+    }
+
+    .frontend-title {
+        font-size: 1.5rem;
+    }
+}
+
+@media (max-width: 640px) {
+    .site-name {
+        font-size: 1.25rem;
+    }
+
+    .food-title {
+        font-size: 1.5rem;
+    }
+
+    .frontend-title {
+        font-size: 1.25rem;
+    }
+}

@@ -127,6 +127,14 @@ return [
             'path' => storage_path('logs/laravel.log'),
         ],
 
+        'ecpay' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/ecpay.log'),
+            'level' => env('ECPAY_LOG_LEVEL', 'info'),
+            'days' => env('ECPAY_LOG_DAYS', 30),
+            'replace_placeholders' => true,
+        ],
+
     ],
 
 ];

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Filament\Models\Contracts\FilamentUser;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -47,6 +48,11 @@ class User extends Authenticatable implements MustVerifyEmail, FilamentUser
         'two_factor_temp_disabled_at',
         'password_reset_attempts',
         'password_reset_last_attempt_at',
+        // 訂閱相關欄位
+        'trial_ends_at',
+        'subscription_ends_at',
+        'is_trial_used',
+        'last_subscription_reminder_at',
     ];
 
     /**
@@ -77,6 +83,13 @@ class User extends Authenticatable implements MustVerifyEmail, FilamentUser
             'two_factor_enabled' => 'boolean',
             'two_factor_confirmed_at' => 'datetime',
             'two_factor_temp_disabled_at' => 'datetime',
+            'password_reset_attempts' => 'integer',
+            'password_reset_last_attempt_at' => 'datetime',
+            // 訂閱相關 casts
+            'trial_ends_at' => 'datetime',
+            'subscription_ends_at' => 'datetime',
+            'is_trial_used' => 'boolean',
+            'last_subscription_reminder_at' => 'datetime',
             'password_reset_last_attempt_at' => 'datetime',
         ];
     }
@@ -232,5 +245,220 @@ class User extends Authenticatable implements MustVerifyEmail, FilamentUser
     public function isStoreOwner(): bool
     {
         return $this->hasRole('store_owner');
+    }
+
+    // ========================================
+    // 訂閱系統相關方法
+    // ========================================
+
+    /**
+     * 關聯訂單紀錄
+     */
+    public function subscriptionOrders()
+    {
+        return $this->hasMany(SubscriptionOrder::class, 'user_id');
+    }
+
+    /**
+     * 檢查是否在試用期內
+     */
+    public function isInTrialPeriod(): bool
+    {
+        return $this->trial_ends_at && $this->trial_ends_at->isFuture();
+    }
+
+    /**
+     * 檢查是否有有效訂閱
+     */
+    public function hasActiveSubscription(): bool
+    {
+        return $this->subscription_ends_at && $this->subscription_ends_at->isFuture();
+    }
+
+    /**
+     * 檢查訂閱是否已過期
+     */
+    public function hasExpiredSubscription(): bool
+    {
+        return $this->subscription_ends_at && $this->subscription_ends_at->isPast();
+    }
+
+    /**
+     * 取得訂閱狀態
+     */
+    public function getSubscriptionStatus(): string
+    {
+        if ($this->isInTrialPeriod()) {
+            return 'trial';
+        } elseif ($this->hasActiveSubscription()) {
+            return 'active';
+        } else {
+            return 'expired';
+        }
+    }
+
+    /**
+     * 取得訂閱狀態標籤
+     */
+    public function getSubscriptionStatusLabel(): string
+    {
+        return match ($this->getSubscriptionStatus()) {
+            'trial' => '試用期中',
+            'active' => '訂閱有效',
+            'expired' => '訂閱過期',
+            default => '未訂閱',
+        };
+    }
+
+    /**
+     * 取得訂閱狀態顏色
+     */
+    public function getSubscriptionStatusColor(): string
+    {
+        return match ($this->getSubscriptionStatus()) {
+            'trial' => 'info',
+            'active' => 'success',
+            'expired' => 'danger',
+            default => 'secondary',
+        };
+    }
+
+    /**
+     * 取得訂閱剩餘天數
+     */
+    public function getSubscriptionRemainingDays(): int
+    {
+        $endDate = $this->subscription_ends_at ?: $this->trial_ends_at;
+
+        if (!$endDate) {
+            return 0;
+        }
+
+        return max(0, now()->diffInDays($endDate));
+    }
+
+    /**
+     * 取得訂閱到期日
+     */
+    public function getSubscriptionExpiryDate(): ?Carbon
+    {
+        return $this->subscription_ends_at ?: $this->trial_ends_at;
+    }
+
+    /**
+     * 檢查訂閱是否即將到期 (預設7天內)
+     */
+    public function isSubscriptionExpiringSoon(int $days = 7): bool
+    {
+        $endDate = $this->getSubscriptionExpiryDate();
+
+        if (!$endDate) {
+            return false;
+        }
+
+        return now()->diffInDays($endDate) <= $days && $endDate->isFuture();
+    }
+
+    /**
+     * 初始化試用期
+     */
+    public function initializeTrial(): bool
+    {
+        if ($this->is_trial_used) {
+            return false;
+        }
+
+        $trialDays = config('ecpay.trial_days', 30);
+        $this->trial_ends_at = now()->addDays($trialDays);
+        $this->is_trial_used = true;
+
+        return $this->save();
+    }
+
+    /**
+     * 延長訂閱
+     */
+    public function extendSubscription(int $months): bool
+    {
+        if ($months <= 0) {
+            return false;
+        }
+
+        $startDate = $this->hasActiveSubscription() || $this->isInTrialPeriod()
+            ? $this->getSubscriptionExpiryDate()
+            : now();
+
+        $this->subscription_ends_at = $startDate->addDays($months * 30);
+
+        return $this->save();
+    }
+
+    /**
+     * 設定訂閱到期日
+     */
+    public function setSubscriptionExpiryDate(Carbon $date): bool
+    {
+        $this->subscription_ends_at = $date;
+        return $this->save();
+    }
+
+    /**
+     * 檢查是否需要發送到期提醒
+     */
+    public function needsExpiryReminder(): bool
+    {
+        if (!$this->getSubscriptionExpiryDate()) {
+            return false;
+        }
+
+        // 檢查是否已經發送過提醒
+        if ($this->last_subscription_reminder_at) {
+            $daysSinceReminder = now()->diffInDays($this->last_subscription_reminder_at);
+            if ($daysSinceReminder < 7) { // 7天內不重複提醒
+                return false;
+            }
+        }
+
+        // 檢查是否在提醒時間範圍內
+        return $this->isSubscriptionExpiringSoon();
+    }
+
+    /**
+     * 標記已發送到期提醒
+     */
+    public function markExpiryReminderSent(): bool
+    {
+        $this->last_subscription_reminder_at = now();
+        return $this->save();
+    }
+
+    /**
+     * 取得最新訂單
+     */
+    public function getLatestOrder(): ?SubscriptionOrder
+    {
+        return $this->subscriptionOrders()->latest()->first();
+    }
+
+    /**
+     * 取得未過期的訂單
+     */
+    public function getActiveOrders()
+    {
+        return $this->subscriptionOrders()
+            ->where('status', 'pending')
+            ->where('expire_date', '>', now())
+            ->get();
+    }
+
+    /**
+     * 檢查是否有未付款的訂單
+     */
+    public function hasPendingOrders(): bool
+    {
+        return $this->subscriptionOrders()
+            ->where('status', 'pending')
+            ->where('expire_date', '>', now())
+            ->exists();
     }
 }

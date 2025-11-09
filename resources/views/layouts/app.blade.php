@@ -7,6 +7,11 @@
 
     <title>{{ $title ?? config('app.name', '592Meal') }}</title>
 
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Chocolate+Classical+Sans&family=Reenie+Beanie&display=swap" rel="stylesheet">
+
     <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
@@ -14,6 +19,47 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     <!-- Custom Styles -->
+    <style>
+        /* 字型定義 */
+        .reenie-beanie-regular {
+            font-family: "Reenie Beanie", cursive;
+            font-weight: 400;
+            font-style: normal;
+        }
+
+        .chocolate-classical-sans-regular {
+            font-family: "Chocolate Classical Sans", sans-serif;
+            font-weight: 400;
+            font-style: normal;
+        }
+
+        /* 網站名稱字型 */
+        .site-name {
+            font-family: "Reenie Beanie", cursive;
+            font-weight: 400;
+            font-style: normal;
+            color: #FB923C; /* 橘色 */
+        }
+
+        /* 前台標題字型 */
+        .frontend-title {
+            font-family: "Chocolate Classical Sans", sans-serif;
+            font-weight: 400;
+            font-style: normal;
+        }
+
+        /* 前台內容字型 */
+        .frontend-content {
+            font-family: "Chocolate Classical Sans", sans-serif;
+            font-weight: 400;
+            font-style: normal;
+        }
+
+        /* 整個頁面內容字型 */
+        body {
+            font-family: "Chocolate Classical Sans", sans-serif;
+        }
+    </style>
     @stack('styles')
 </head>
 <body class="antialiased bg-gray-50 flex flex-col min-h-screen">
@@ -23,8 +69,8 @@
             <div class="flex justify-between h-16">
                 <!-- Logo -->
                 <div class="flex items-center">
-                    <a href="{{ route('home') }}" class="text-2xl font-bold text-gray-900">
-                        592Meal-我就餓
+                    <a href="{{ route('home') }}" class="text-4xl font-bold site-name">
+                        592Meal
                     </a>
                 </div>
 
@@ -114,7 +160,7 @@
                 店家註冊
             </a>
             <p class="mt-4 text-xs text-gray-400">
-                &copy; {{ date('Y') }} 592Meal. All rights reserved.
+                &copy; {{ date('Y') }} <span class="site-name">592Meal</span>. All rights reserved.
             </p>
         </div>
     </footer>

@@ -529,8 +529,16 @@
 <div class="container mx-auto px-4 py-6 lg:py-8">
     <!-- 頁面標題 -->
     <div class="text-center mb-8">
-        <h1 class="text-4xl font-bold text-gray-900 mb-4">發現美食店家</h1>
-        <p class="text-xl text-gray-600">探索附近的優質餐廳，開始美食之旅</p>
+        <div class="flex items-center justify-between mb-4">
+            <div></div>
+            <a href="{{ route('home') }}" class="inline-flex items-center px-4 py-2 bg-orange-500 text-white font-medium rounded-lg hover:bg-orange-600 transition-colors">
+                <i class="fas fa-home mr-2"></i>返回首頁
+            </a>
+        </div>
+        <h1 class="text-4xl font-bold text-gray-900 mb-4 frontend-title">
+            <span class="site-name">592</span>美食店家
+        </h1>
+        <p class="text-xl text-gray-600 frontend-content">探索附近的優質餐廳，開始美食之旅</p>
     </div>
 
     <!-- 搜尋區域 -->

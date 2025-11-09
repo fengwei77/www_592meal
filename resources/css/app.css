@@ -9,3 +9,9 @@
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 }
+
+/* Import Filament subscription widget styles */
+@import './filament-subscription-widget.css';
+
+/* Import frontend styles for font and color themes */
+@import './frontend.css';

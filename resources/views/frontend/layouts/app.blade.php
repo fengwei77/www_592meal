@@ -8,6 +8,11 @@
     <!-- CSRF Token -->
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Chocolate+Classical+Sans&family=Reenie+Beanie&display=swap" rel="stylesheet">
+
     <!-- Tailwind CSS -->
     <link href="{{ asset('css/app.css') }}" rel="stylesheet">
 
@@ -16,6 +21,41 @@
 
     <!-- Custom CSS -->
     <style>
+        /* 字型定義 */
+        .reenie-beanie-regular {
+            font-family: "Reenie Beanie", cursive;
+            font-weight: 400;
+            font-style: normal;
+        }
+
+        .chocolate-classical-sans-regular {
+            font-family: "Chocolate Classical Sans", sans-serif;
+            font-weight: 400;
+            font-style: normal;
+        }
+
+        /* 網站名稱字型 */
+        .site-name {
+            font-family: "Reenie Beanie", cursive;
+            font-weight: 400;
+            font-style: normal;
+            color: #FB923C; /* 橘色 */
+        }
+
+        /* 前台內容文字標題 */
+        .frontend-title {
+            font-family: "Chocolate Classical Sans", sans-serif;
+            font-weight: 400;
+            font-style: normal;
+        }
+
+        /* 前台內容所有文字 */
+        .frontend-content {
+            font-family: "Chocolate Classical Sans", sans-serif;
+            font-weight: 400;
+            font-style: normal;
+        }
+
         /* 自定義樣式 */
         .store-primary {
             @apply bg-blue-600 text-white;
@@ -32,9 +72,26 @@
         .price-tag {
             @apply text-xl font-bold text-green-600;
         }
+
+        /* 橘色美食主題 */
+        .food-orange {
+            color: #FB923C;
+        }
+
+        .food-orange-bg {
+            background-color: #FB923C;
+        }
+
+        .food-orange-hover:hover {
+            color: #F97316;
+        }
+
+        .food-orange-border {
+            border-color: #FB923C;
+        }
     </style>
 </head>
-<body class="bg-gray-50">
+<body class="bg-gray-50 frontend-content">
     <!-- 導航列 -->
     <nav class="bg-white shadow-sm border-b">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -42,15 +99,20 @@
                 <div class="flex items-center">
                     <!-- 店家名稱 -->
                     @if(isset($current_store))
-                        <h1 class="text-xl font-semibold text-gray-900">
+                        <h1 class="text-xl font-semibold text-gray-900 site-name">
                             {{ $current_store->name }}
                         </h1>
                     @else
-                        <h1 class="text-xl font-semibold text-gray-900">592Meal</h1>
+                        <h1 class="text-4xl font-semibold text-gray-900 site-name">592Meal</h1>
                     @endif
                 </div>
 
                 <div class="flex items-center space-x-4">
+                    <!-- 店家清單按鈕 -->
+                    <a href="{{ route('frontend.stores.index') }}" class="hidden md:flex items-center px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
+                        <i class="fas fa-store mr-2"></i>店家清單
+                    </a>
+
                     <!-- 我的訂單按鈕 -->
                     @if(session('line_logged_in'))
                         <a href="{{ route('frontend.order.index') }}" class="hidden md:flex items-center px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
@@ -108,11 +170,16 @@
             <div class="px-2 pt-2 pb-3 space-y-1">
                 @if(isset($current_store))
                     <a href="{{ route('frontend.store.detail', $current_store->store_slug_name) }}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">
-                        <i class="fas fa-home mr-2"></i>首頁
+                        <i class="fas fa-home mr-2"></i>店家首頁
                     </a>
                 @else
+                    <a href="{{ route('home') }}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">
+                        <i class="fas fa-home mr-2"></i>平台首頁
+                    </a>
+
+                    <!-- 店家清單（移動端放在平台首頁下面） -->
                     <a href="{{ route('frontend.stores.index') }}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">
-                        <i class="fas fa-home mr-2"></i>店家清單
+                        <i class="fas fa-store mr-2"></i>店家清單
                     </a>
                 @endif
 
@@ -213,7 +280,7 @@
 
             <div class="border-t border-gray-700 mt-8 pt-8 text-center">
                 <p class="text-gray-300">
-                    &copy; {{ date('Y') }} 592Meal. 版權所有。
+                    &copy; {{ date('Y') }} <span class="site-name">592Meal</span>. 版權所有。
                 </p>
             </div>
         </div>

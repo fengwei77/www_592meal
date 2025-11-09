@@ -232,3 +232,6 @@ Route::domain('{store_subdomain}.' . parse_url(config('app.url'), PHP_URL_HOST))
         // Route::get('/order/confirmed/{order}', [OrderController::class, 'confirmed'])->name('subdomain.order.confirmed');
     });
 */
+
+// 載入訂閱系統路由
+require __DIR__.'/subscription.php';

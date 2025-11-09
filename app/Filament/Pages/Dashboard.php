@@ -34,4 +34,27 @@ class Dashboard extends BaseDashboard
     {
         return '控制台';
     }
+
+    /**
+     * 配置儀表板網格列數
+     * 設置響應式網格佈局以適應不同螢幕尺寸
+     */
+    public function getColumns(): int | array
+    {
+        return [
+            'md' => 2,
+            'lg' => 3,
+            'xl' => 4,
+            '2xl' => 4,
+        ];
+    }
+
+    /**
+     * 定義儀表板要顯示的 Widgets
+     * 由於我們使用 discoverWidgets，所以不需要在這裡手動定義
+     */
+    protected function getHeaderWidgets(): array
+    {
+        return [];
+    }
 }
