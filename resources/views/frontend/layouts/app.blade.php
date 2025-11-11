@@ -98,7 +98,7 @@
             <div class="flex justify-between h-16">
                 <div class="flex items-center">
                     <!-- 品牌名稱 -->
-                    <h1 class="text-xl font-semibold text-gray-900 site-name">592Meal</h1>
+                    <h1 class="text-2xl font-semibold text-gray-900 site-name">592Meal</h1>
                 </div>
 
                 <div class="flex items-center space-x-4">

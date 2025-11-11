@@ -17,7 +17,7 @@
             <!-- 品牌名稱 -->
             <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-6">
                 <div class="max-w-4xl mx-auto">
-                    <h1 class="text-3xl font-bold text-white mb-2">592Meal</h1>
+                    <h1 class="text-4xl font-bold text-white mb-2">592Meal</h1>
                     <p class="text-white/90 text-lg">{{ $store->getTypeLabel() }}</p>
                 </div>
             </div>
