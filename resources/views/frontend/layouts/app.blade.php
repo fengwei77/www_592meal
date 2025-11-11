@@ -140,10 +140,10 @@
                     <!-- LINE 登入/登出 -->
                     @if(auth('customer')->check())
                         <div class="hidden md:flex items-center space-x-2">
-                            @if(session('line_user.picture_url'))
-                                <img src="{{ session('line_user.picture_url') }}" alt="LINE 頭像" class="w-8 h-8 rounded-full border border-green-500">
+                            @if(auth('customer')->user()->avatar_url)
+                                <img src="{{ auth('customer')->user()->avatar_url }}" alt="LINE 頭像" class="w-8 h-8 rounded-full border border-green-500">
                             @endif
-                            <span class="text-sm text-gray-700">{{ session('line_user.display_name') }}</span>
+                            <span class="text-sm text-gray-700">{{ auth('customer')->user()->name }}</span>
                             <form action="{{ route('line.logout') }}" method="POST" class="inline">
                                 @csrf
                                 <button type="submit" class="text-sm text-gray-500 hover:text-gray-700">
@@ -205,10 +205,10 @@
                 @if(auth('customer')->check())
                     <div class="px-3 py-2 border-t">
                         <div class="flex items-center space-x-2 mb-2">
-                            @if(session('line_user.picture_url'))
-                                <img src="{{ session('line_user.picture_url') }}" alt="LINE 頭像" class="w-8 h-8 rounded-full border border-green-500">
+                            @if(auth('customer')->user()->avatar_url)
+                                <img src="{{ auth('customer')->user()->avatar_url }}" alt="LINE 頭像" class="w-8 h-8 rounded-full border border-green-500">
                             @endif
-                            <span class="text-sm text-gray-700">{{ session('line_user.display_name') }}</span>
+                            <span class="text-sm text-gray-700">{{ auth('customer')->user()->name }}</span>
                         </div>
                         <form action="{{ route('line.logout') }}" method="POST">
                             @csrf
