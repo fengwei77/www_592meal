@@ -114,7 +114,7 @@
                     </a>
 
                     <!-- 我的訂單按鈕 -->
-                    @if(session('line_logged_in'))
+                    @if(auth('customer')->check())
                         <a href="{{ route('frontend.order.index') }}" class="hidden md:flex items-center px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
                             <i class="fas fa-receipt mr-2"></i>我的訂單
                         </a>
@@ -138,7 +138,7 @@
                     @endif
 
                     <!-- LINE 登入/登出 -->
-                    @if(session('line_logged_in'))
+                    @if(auth('customer')->check())
                         <div class="hidden md:flex items-center space-x-2">
                             @if(session('line_user.picture_url'))
                                 <img src="{{ session('line_user.picture_url') }}" alt="LINE 頭像" class="w-8 h-8 rounded-full border border-green-500">
@@ -183,7 +183,7 @@
                     </a>
                 @endif
 
-                @if(session('line_logged_in'))
+                @if(auth('customer')->check())
                     <a href="{{ route('frontend.order.index') }}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">
                         <i class="fas fa-receipt mr-2"></i>我的訂單
                     </a>
@@ -202,7 +202,7 @@
                 </a>
 
                 <!-- LINE 登入/登出（移動端） -->
-                @if(session('line_logged_in'))
+                @if(auth('customer')->check())
                     <div class="px-3 py-2 border-t">
                         <div class="flex items-center space-x-2 mb-2">
                             @if(session('line_user.picture_url'))
@@ -228,21 +228,7 @@
 
     <!-- 主要內容 -->
     <main class="min-h-screen">
-        <!-- 調試信息 (除生產環境外) -->
-        @if(!app()->environment('production'))
-            <div class="fixed top-0 right-0 bg-yellow-100 p-2 text-xs z-50">
-                <div>LINE登入狀態: {{ session('line_logged_in') ? '已登入' : '未登入' }}</div>
-                <div>Session ID: {{ session()->getId() }}</div>
-                <div>Customer Auth: {{ auth('customer')->check() ? '已登入' : '未登入' }}</div>
-                @if(auth('customer')->check())
-                    <div>Customer ID: {{ auth('customer')->id() }}</div>
-                @endif
-                @if(session('line_user'))
-                    <div>LINE用戶: {{ session('line_user.display_name') }}</div>
-                @endif
-            </div>
-        @endif
-
+        
         @yield('content')
     </main>
 

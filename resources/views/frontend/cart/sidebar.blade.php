@@ -103,7 +103,7 @@
         <!-- 送出訂單按鈕 -->
         <div class="space-y-2">
             @if(isset($current_store) && $current_store)
-                @if(session('line_logged_in'))
+                @if(auth('customer')->check())
                     <!-- 已登入 LINE：直接送出訂單 -->
                     <a href="{{ route('frontend.order.create', $current_store->store_slug_name) }}"
                        class="w-full text-white py-3 px-4 rounded-lg text-center flex items-center justify-center transition-all duration-200 hover:opacity-90 font-semibold shadow-md"

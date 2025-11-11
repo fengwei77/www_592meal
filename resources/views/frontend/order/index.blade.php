@@ -12,7 +12,7 @@
                     <h1 class="text-4xl font-bold text-gray-900 frontend-title">
                         <i class="fas fa-receipt mr-2"></i>我的訂單
                     </h1>
-                    @if(session('line_logged_in'))
+                    @if(auth('customer')->check())
                         <p class="mt-1 text-sm text-gray-500 frontend-content">
                             <i class="fab fa-line mr-1 text-green-600"></i>{{ session('line_user.display_name') }}
                         </p>

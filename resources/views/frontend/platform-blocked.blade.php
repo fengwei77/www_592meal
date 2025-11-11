@@ -29,7 +29,7 @@
             </h3>
 
             <div class="space-y-3 text-sm text-gray-700">
-                @if(session('line_logged_in') && session('line_user'))
+                @if(auth('customer')->check())
                     @php
                         $lineUserId = session('line_user.user_id');
                         $blockedStores = \App\Models\StoreCustomerBlock::getBlockedStores($lineUserId);
@@ -111,7 +111,7 @@
                 <i class="fas fa-home mr-2"></i>返回首頁
             </a>
 
-            @if(!session('line_logged_in'))
+            @if(!auth('customer')->check())
                 <a href="{{ route('line.login') }}"
                    class="w-full flex items-center justify-center px-4 py-3 border border-gray-300 text-base font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 transition-colors">
                     <i class="fab fa-line mr-2"></i>LINE 登入

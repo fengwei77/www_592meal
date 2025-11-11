@@ -153,7 +153,7 @@
                         <div>
                             <label for="customer_name" class="block text-sm font-medium text-gray-700 mb-2">
                                 姓名 <span class="text-red-500">*</span>
-                                @if(session('line_logged_in'))
+                                @if(auth('customer')->check())
                                     <span class="text-xs text-green-600 ml-2">
                                         <i class="fab fa-line mr-1"></i>已從 LINE 登入
                                     </span>
@@ -167,8 +167,8 @@
                                    maxlength="100"
                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                                    placeholder="請輸入您的姓名"
-                                   @if(session('line_logged_in')) readonly @endif>
-                            @if(session('line_logged_in'))
+                                   @if(auth('customer')->check()) readonly @endif>
+                            @if(auth('customer')->check())
                                 <p class="mt-1 text-xs text-gray-500">LINE 登入的姓名將自動填入</p>
                             @endif
                             @error('customer_name')
