@@ -76,27 +76,24 @@
 
                 <!-- User Menu -->
                 <div class="flex items-center">
-                    @if(session('line_logged_in') && session('line_user'))
-                        @php
-                            $lineUser = session('line_user');
-                        @endphp
+                    @if(auth('customer')->check())
                         <!-- Authenticated Customer -->
                         <div class="flex items-center space-x-4">
                             <!-- Customer Avatar & Name -->
                             <div class="flex items-center">
-                                @if(!empty($lineUser['picture_url']))
-                                    <img src="{{ $lineUser['picture_url'] }}"
-                                         alt="{{ $lineUser['display_name'] }}"
+                                @if(auth('customer')->user()->avatar_url)
+                                    <img src="{{ auth('customer')->user()->avatar_url }}"
+                                         alt="{{ auth('customer')->user()->name }}"
                                          class="w-10 h-10 rounded-full border-2 border-gray-200">
                                 @else
                                     <div class="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center border-2 border-gray-200">
                                         <span class="text-gray-600 font-semibold text-sm">
-                                            {{ mb_substr($lineUser['display_name'] ?? '用戶', 0, 2) }}
+                                            {{ mb_substr(auth('customer')->user()->name, 0, 2) }}
                                         </span>
                                     </div>
                                 @endif
                                 <span class="ml-3 text-sm font-medium text-gray-700">
-                                    {{ $lineUser['display_name'] ?? '用戶' }}
+                                    {{ auth('customer')->user()->name }}
                                 </span>
                             </div>
 
@@ -166,17 +163,15 @@
     </footer>
 
     <!-- 設定用戶資訊給 JavaScript -->
-    @if(session('line_logged_in') && session('line_user'))
+    @if(auth('customer')->check())
         @php
-            $lineUser = session('line_user');
-            $customer = \App\Models\Customer::where('line_id', $lineUser['user_id'])->first();
+            $customer = auth('customer')->user();
         @endphp
-        @if($customer)
-            <script>
-                window.currentUser = {
-                    id: {{ $customer->id }},
-                    name: '{{ $lineUser['display_name'] }}',
-                    lineId: '{{ $lineUser['user_id'] }}'
+        <script>
+            window.currentUser = {
+                id: {{ $customer->id }},
+                    name: '{{ $customer->name }}',
+                    lineId: '{{ $customer->line_id }}'
                 };
             </script>
         @endif
