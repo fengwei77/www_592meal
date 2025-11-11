@@ -43,9 +43,13 @@ class AdminPanelProvider extends PanelProvider
                 new Google2FAProvider(),
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
-            ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->pages([
                 Dashboard::class,
+                // 手動列出所有頁面，避免自動發現已刪除的 StoreSettings
+                \App\Filament\Pages\EditProfile::class,
+                \App\Filament\Pages\SecuritySettings::class,
+                \App\Filament\Pages\ManageSubscription::class,
+                \App\Filament\Pages\SystemManagement::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->widgets([
