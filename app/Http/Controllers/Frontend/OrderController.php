@@ -29,9 +29,10 @@ class OrderController extends Controller
                                     ->where('is_active', true)
                                     ->firstOrFail();
 
-        // 檢查用戶是否被該店家鎖定
-        if (session('line_logged_in') && session('line_user')) {
-            $lineUserId = session('line_user.user_id');
+        // 檢查用戶是否被該店家鎖定 - 使用 Laravel 認證系統
+        if (auth('customer')->check()) {
+            $customer = auth('customer')->user();
+            $lineUserId = $customer->line_id;
 
             // 檢查店家級別鎖定
             if (StoreCustomerBlock::isBlockedByStore($lineUserId, $store->id)) {
@@ -96,9 +97,10 @@ class OrderController extends Controller
                                     ->where('is_active', true)
                                     ->firstOrFail();
 
-        // 檢查用戶是否被該店家鎖定
-        if (session('line_logged_in') && session('line_user')) {
-            $lineUserId = session('line_user.user_id');
+        // 檢查用戶是否被該店家鎖定 - 使用 Laravel 認證系統
+        if (auth('customer')->check()) {
+            $customer = auth('customer')->user();
+            $lineUserId = $customer->line_id;
 
             // 檢查店家級別鎖定
             if (StoreCustomerBlock::isBlockedByStore($lineUserId, $store->id)) {
@@ -147,19 +149,19 @@ class OrderController extends Controller
             ];
 
             // 如果有 LINE 登入資訊，添加到訂單
-            if (session('line_logged_in') && session('line_user')) {
-                $lineUser = session('line_user');
-                $orderData['line_user_id'] = $lineUser['user_id'] ?? null;
-                $orderData['line_display_name'] = $lineUser['display_name'] ?? null;
-                $orderData['line_picture_url'] = $lineUser['picture_url'] ?? null;
+            if (auth('customer')->check()) {
+                $customer = auth('customer')->user();
+                $orderData['line_user_id'] = $customer->line_id;
+                $orderData['line_display_name'] = $customer->name;
+                $orderData['line_picture_url'] = $customer->avatar_url;
 
                 // 根據 LINE ID 查找或建立 Customer 記錄
-                if (!empty($lineUser['user_id'])) {
-                    $customer = \App\Models\Customer::firstOrCreate(
-                        ['line_id' => $lineUser['user_id']],
+                if (!empty($customer->line_id)) {
+                    $customerRecord = \App\Models\Customer::firstOrCreate(
+                        ['line_id' => $customer->line_id],
                         [
-                            'name' => $lineUser['display_name'] ?? '顧客',
-                            'avatar_url' => $lineUser['picture_url'] ?? null,
+                            'name' => $customer->name,
+                            'avatar_url' => $customer->avatar_url,
                         ]
                     );
                     $orderData['customer_id'] = $customer->id;
@@ -220,7 +222,7 @@ class OrderController extends Controller
     public function index(Request $request)
     {
         // 檢查是否已登入 LINE
-        if (!session('line_logged_in') || !session('line_user')) {
+        if (!auth('customer')->check()) {
             return redirect()->route('login')
                 ->with('error', '請先登入 LINE 以查看您的訂單');
         }
@@ -250,7 +252,7 @@ class OrderController extends Controller
     public function show(Request $request, $orderNumber)
     {
         // 檢查是否已登入 LINE
-        if (!session('line_logged_in') || !session('line_user')) {
+        if (!auth('customer')->check()) {
             return redirect()->route('login')
                 ->with('error', '請先登入 LINE');
         }
@@ -305,7 +307,7 @@ class OrderController extends Controller
     public function cancel(Request $request, $orderNumber)
     {
         // 檢查是否已登入 LINE
-        if (!session('line_logged_in') || !session('line_user')) {
+        if (!auth('customer')->check()) {
             return response()->json([
                 'success' => false,
                 'message' => '請先登入 LINE'

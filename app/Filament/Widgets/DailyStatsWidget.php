@@ -10,7 +10,7 @@ class DailyStatsWidget extends Widget
 {
     protected string $view = 'filament.widgets.daily-stats-widget';
 
-    protected static ?int $sort = 13;
+    protected static ?int $sort = 16;
 
     protected int | string | array $columnSpan = 2;
 

@@ -94,7 +94,6 @@
   array (
     'providers' => 
     array (
-      0 => 'Laravel\\Pail\\PailServiceProvider',
     ),
   ),
   'laravel/reverb' => 

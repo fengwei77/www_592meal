@@ -173,11 +173,36 @@ class MenuCategoryResource extends Resource
             return $query;
         }
 
-        if ($user && $user->hasRole('Store Owner')) {
+        if ($user && $user->hasRole('store_owner')) {
             $storeIds = \App\Models\Store::where('user_id', $user->id)->pluck('id');
             return $query->whereIn('store_id', $storeIds);
         }
 
         return $query->whereRaw('1 = 0');
+    }
+
+    /**
+     * 自訂權限檢查：允許有權限的用戶訪問
+     */
+    protected static function hasViewPermission(): bool
+    {
+        $user = Auth::user();
+
+        // 未登入使用者無法存取
+        if (!$user) {
+            return false;
+        }
+
+        // Super Admin 可以看到所有選單
+        if ($user->hasRole('super_admin')) {
+            return true;
+        }
+
+        // Store Owner 如果有菜單分類權限就可以訪問
+        if ($user->hasRole('store_owner') && $user->can('view_menu_categories')) {
+            return true;
+        }
+
+        return false;
     }
 }

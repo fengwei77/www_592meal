@@ -390,7 +390,7 @@ class AdminSubscriptionController extends Controller
                         if (!$this->subscriptionService->extendUserSubscription($user, $request->input('months'))) {
                             $errors[] = "用戶 {$user->name} 延長訂閱失敗";
                             $errorCount++;
-                            continue;
+                            continue 2;
                         }
                         $successCount++;
                         break;

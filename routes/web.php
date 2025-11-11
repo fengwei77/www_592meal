@@ -14,6 +14,7 @@ use App\Http\Controllers\Frontend\OrderController;
 use App\Http\Controllers\Frontend\StoreController;
 use App\Http\Controllers\Store\OrderManagementController;
 use App\Http\Controllers\ContactController;
+use App\Http\Controllers\Test\EcpayTestController;
 
 /**
  * 全域驗證碼路由 - 所有域名都可訪問
@@ -32,12 +33,86 @@ Route::post('/cart/clear', [CartController::class, 'clear'])->middleware('preven
 /**
  * LINE Login 路由 - 所有域名都可訪問
  */
-Route::prefix('auth/line')->group(function () {
+Route::prefix('auth/line')->middleware('throttle:10,1')->group(function () {
     Route::get('/login', [LineLoginController::class, 'redirect'])->name('line.login');
     Route::get('/callback', [LineLoginController::class, 'callback'])->name('line.callback');
-    Route::post('/logout', [LineLoginController::class, 'logout'])->name('line.logout');
+    Route::match(['get', 'post'], '/logout', [LineLoginController::class, 'logout'])->name('line.logout');
     Route::get('/check', [LineLoginController::class, 'check'])->name('line.check');
 });
+
+/**
+ * 全域測試路由 - 所有域名都可訪問
+ */
+
+// ECPay 付款結果測試頁面
+Route::get('/test/ecpay-payment', function () {
+    return view('test.ecpay-payment-test');
+})->name('test.ecpay.payment');
+
+// 設定付款測試 session
+Route::post('/test/set-payment-session', [EcpayTestController::class, 'setPaymentSession'])
+    ->name('test.set.payment.session');
+
+// LINE Session 診斷頁面
+Route::get('/debug/line-session', function () {
+    return view('debug.line-session-debug');
+})->name('debug.line.session');
+
+// 測試 LINE 回調 URL
+Route::get('/debug/line-callback-test', function () {
+    $customer = auth('customer')->user();
+    $isBlocked = false;
+    $blockInfo = null;
+
+    if ($customer) {
+        $isBlocked = \App\Models\StoreCustomerBlock::isPlatformBlocked($customer->id);
+        if ($isBlocked) {
+            $blocks = \App\Models\StoreCustomerBlock::where('customer_id', $customer->id)->get();
+            $blockInfo = $blocks->map(function($block) {
+                return [
+                    'store_id' => $block->store_id,
+                    'store_name' => $block->store->name ?? null,
+                    'reason' => $block->reason,
+                    'created_at' => $block->created_at,
+                ];
+            });
+        }
+    }
+
+    return response()->json([
+        'current_config' => [
+            'LINE_LOGIN_CALLBACK_URL' => config('line.callback_url'),
+            'APP_URL' => config('app.url'),
+            'current_url' => url()->current(),
+            'full_url' => url('/auth/line/callback'),
+        ],
+        'routes' => [
+            'line_callback_route' => route('line.callback'),
+            'line_login_route' => route('line.login'),
+        ],
+        'customer_info' => [
+            'authenticated' => auth('customer')->check(),
+            'customer_id' => $customer ? $customer->id : null,
+            'customer_name' => $customer ? $customer->name : null,
+            'line_id' => $customer ? $customer->line_id : null,
+        ],
+        'platform_block' => [
+            'is_blocked' => $isBlocked,
+            'block_info' => $blockInfo,
+        ],
+        'session_test' => [
+            'session_id' => session()->getId(),
+            'line_login_state' => session('line_login_state'),
+            'line_login_nonce' => session('line_login_nonce'),
+            'line_logged_in' => session('line_logged_in'),
+            'line_user' => session('line_user'),
+        ]
+    ]);
+})->name('debug.line.callback.test');
+
+// 清除付款測試 session
+Route::post('/test/clear-payment-session', [EcpayTestController::class, 'clearPaymentSession'])
+    ->name('test.clear.payment.session');
 
 /**
  * 前台路由群組
@@ -107,11 +182,7 @@ Route::domain(parse_url(config('app.url'), PHP_URL_HOST))->group(function () {
         return view('debug.home-auth');
     })->name('debug.home.auth');
 
-    // LINE Login routes (with rate limiting to prevent abuse)
-    Route::middleware('throttle:10,1')->group(function () {
-        Route::get('/auth/line', [LineLoginController::class, 'redirect'])->name('auth.line');
-        Route::get('/auth/line/callback', [LineLoginController::class, 'callback'])->name('auth.line.callback');
-    });
+    // LINE Login routes (with rate limiting to prevent abuse) - 已移至全域路由，避免衝突
 
     // Logout route (顧客登出)
     Route::post('/logout', function () {
@@ -134,6 +205,7 @@ Route::domain(parse_url(config('app.url'), PHP_URL_HOST))->group(function () {
     Route::get('/contact', [ContactController::class, 'index'])->name('frontend.contact');
     Route::post('/contact', [ContactController::class, 'submit'])->name('contact.submit');
 
+  
     Route::middleware(['auth'])->group(function () {
         // 店家儀表板（需要登入）
         Route::get('/dashboard', function () {

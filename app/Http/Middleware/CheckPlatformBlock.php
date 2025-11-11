@@ -16,9 +16,10 @@ class CheckPlatformBlock
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // 只檢查已登入的用戶
-        if (session('line_logged_in') && session('line_user')) {
-            $lineUserId = session('line_user.user_id');
+        // 只檢查已登入的用戶 - 使用 Laravel 認證系統
+        if (auth('customer')->check()) {
+            $customer = auth('customer')->user();
+            $lineUserId = $customer->line_id;
 
             // 檢查是否被平台鎖定（被3個或以上店家鎖定）
             if (StoreCustomerBlock::isPlatformBlocked($lineUserId)) {

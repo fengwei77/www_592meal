@@ -40,6 +40,18 @@ class RolePermissionSeeder extends Seeder
             'edit_categories',
             'delete_categories',
 
+            // 菜單管理
+            'manage_menu_categories',
+            'view_menu_categories',
+            'create_menu_categories',
+            'edit_menu_categories',
+            'delete_menu_categories',
+
+            'manage_menu_items',
+            'view_menu_items',
+            'create_menu_items',
+            'edit_menu_items',
+            'delete_menu_items',
             // 訂單管理
             'manage_orders',
             'view_orders',
@@ -67,6 +79,12 @@ class RolePermissionSeeder extends Seeder
             // 系統設定
             'manage_settings',
             'view_settings',
+
+            // 系統管理 (僅 Super Admin)
+            'access_system_management',
+            'view_system_statistics',
+            'manage_orders',
+            'manual_payment_processing',
         ];
 
         foreach ($permissions as $permission) {
@@ -97,6 +115,19 @@ class RolePermissionSeeder extends Seeder
             'create_categories',
             'edit_categories',
             'delete_categories',
+
+            // 菜單管理
+            'manage_menu_categories',
+            'view_menu_categories',
+            'create_menu_categories',
+            'edit_menu_categories',
+            'delete_menu_categories',
+
+            'manage_menu_items',
+            'view_menu_items',
+            'create_menu_items',
+            'edit_menu_items',
+            'delete_menu_items',
 
             // 訂單管理
             'manage_orders',

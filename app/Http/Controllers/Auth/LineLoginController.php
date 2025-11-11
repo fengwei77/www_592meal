@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class LineLoginController extends Controller
@@ -45,6 +46,18 @@ class LineLoginController extends Controller
      */
     public function callback(Request $request)
     {
+        // 強制記錄回調被調用
+        Log::info('LINE Login callback received', [
+            'request_method' => $request->method(),
+            'request_url' => $request->fullUrl(),
+            'all_params' => $request->all(),
+            'session_id' => session()->getId(),
+            'state_in_request' => $request->input('state'),
+            'state_in_session' => session('line_login_state'),
+            'has_error' => $request->has('error'),
+            'error_description' => $request->input('error_description'),
+        ]);
+
         // 驗證 state
         if ($request->input('state') !== session('line_login_state')) {
             return redirect()->route('frontend.stores.index')
@@ -112,7 +125,7 @@ class LineLoginController extends Controller
             \Illuminate\Support\Facades\Auth::guard('customer')->login($customer);
 
             // 儲存 LINE 用戶資訊到 session (向後相容)
-            session([
+            $lineUserData = [
                 'line_user' => [
                     'user_id' => $profile['userId'],
                     'display_name' => $profile['displayName'],
@@ -120,14 +133,40 @@ class LineLoginController extends Controller
                     'status_message' => $profile['statusMessage'] ?? null,
                 ],
                 'line_logged_in' => true,
+            ];
+
+            Log::info('LINE Login 即將設定 session 資料', $lineUserData);
+            session($lineUserData);
+
+            Log::info('LINE Login session 設定完成', [
+                'session_id' => session()->getId(),
+                'line_logged_in' => session('line_logged_in'),
+                'line_user_id' => session('line_user.user_id'),
+                'customer_authenticated' => auth('customer')->check(),
+                'customer_id' => auth('customer')->id(),
             ]);
 
-            // 清除臨時 session 資料
-            session()->forget(['line_login_state', 'line_login_nonce']);
+            // 清除臨時 session 資料 (更精確地只清除特定項目)
+            $tempSessionData = [
+                'line_login_state' => session('line_login_state'),
+                'line_login_nonce' => session('line_login_nonce'),
+                'line_login_return_url' => session('line_login_return_url'),
+            ];
 
-            // 重定向回原來的頁面或首頁
+            Log::info('LINE Login 即將清除的臨時 session 資料', $tempSessionData);
+            session()->forget(['line_login_state', 'line_login_nonce', 'line_login_return_url']);
+
+            // 驗證重要 session 資料是否仍然存在
+            Log::info('LINE Login 清除後的 session 狀態', [
+                'line_logged_in' => session('line_logged_in'),
+                'line_user_id' => session('line_user.user_id'),
+                'customer_authenticated' => auth('customer')->check(),
+                'customer_id' => auth('customer')->id(),
+                'session_id' => session()->getId(),
+            ]);
+
+            // 取得重定向URL (在清除之前)
             $returnUrl = session('line_login_return_url', route('frontend.stores.index'));
-            session()->forget('line_login_return_url');
 
             return redirect($returnUrl)
                 ->with('success', '歡迎，' . $profile['displayName'] . '！');
@@ -148,14 +187,41 @@ class LineLoginController extends Controller
      */
     public function logout(Request $request)
     {
+        $userInfo = [
+            'customer_authenticated' => \Illuminate\Support\Facades\Auth::guard('customer')->check(),
+            'customer_id' => \Illuminate\Support\Facades\Auth::guard('customer')->id(),
+            'line_logged_in' => session('line_logged_in'),
+            'line_user_id' => session('line_user.user_id'),
+            'request_method' => $request->method(),
+            'referer' => $request->headers->get('referer'),
+        ];
+
+        \Log::info('LINE Logout started', $userInfo);
+
         // 登出 Laravel 認證系統
         \Illuminate\Support\Facades\Auth::guard('customer')->logout();
 
-        // 清除 session 資料
+        // 清除所有 LINE 相關的 session 資料
+        $sessionData = [
+            'line_user' => session('line_user'),
+            'line_logged_in' => session('line_logged_in'),
+        ];
+
         session()->forget(['line_user', 'line_logged_in']);
 
-        return redirect()->back()
-            ->with('success', '已登出 LINE');
+        \Log::info('LINE Logout completed', [
+            'cleared_session_data' => $sessionData,
+            'session_id_after' => session()->getId(),
+        ]);
+
+        // 確保有安全的重定向目標
+        $redirectTo = $request->headers->get('referer');
+        if (!$redirectTo || str_contains($redirectTo, '/auth/line')) {
+            $redirectTo = route('frontend.stores.index');
+        }
+
+        return redirect($redirectTo)
+            ->with('success', '已成功登出 LINE');
     }
 
     /**

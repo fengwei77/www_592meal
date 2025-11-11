@@ -29,9 +29,55 @@ Route::middleware(['auth'])->prefix('subscription')->name('subscription.')->grou
 });
 
 // 綠界金流回傳路由 (無需認證)
-Route::prefix('ecpay')->name('ecpay.')->group(function () {
+Route::middleware(['web'])->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class])
+    ->prefix('ecpay')->name('ecpay.')
+    ->group(function () {
     Route::post('/return', [EcpayController::class, 'returnUrl'])->name('return');
     Route::post('/payment-info', [EcpayController::class, 'paymentInfo'])->name('paymentInfo');
+    Route::get('/payment-result', function (\Illuminate\Http\Request $request) {
+    // 簡化版處理函數，直接顯示視圖
+    $paymentResult = session('payment_result') ?: session('ecpay_payment_result');
+
+    if (!$paymentResult) {
+        // 如果沒有 session 資料，檢查 URL 參數
+        $orderNumber = $request->input('order_number');
+        $success = $request->input('success', false);
+        $message = $request->input('message', '');
+
+        if (!$orderNumber) {
+            return view('ecpay.payment-result', [
+                'success' => false,
+                'message' => '找不到付款結果資訊',
+                'orderNumber' => null,
+                'order' => null,
+            ]);
+        }
+
+        return view('ecpay.payment-result', [
+            'success' => (bool)$success,
+            'message' => $message,
+            'orderNumber' => $orderNumber,
+            'order' => null,
+        ]);
+    }
+
+    // 從 session 取得資料
+    $success = $paymentResult['success'];
+    $message = $paymentResult['message'];
+    $order = $paymentResult['order'] ?? null;
+    $orderNumber = $paymentResult['order_number'] ?? ($order ? $order->order_number : null);
+
+    // 清除 session 中的付款結果
+    session()->forget('payment_result');
+    session()->forget('ecpay_payment_result');
+
+    return view('ecpay.payment-result', [
+        'success' => $success,
+        'message' => $message,
+        'orderNumber' => $orderNumber,
+        'order' => $order,
+    ]);
+})->name('payment.result');
     Route::get('/client-return', [EcpayController::class, 'clientReturn'])->name('clientReturn');
 
     // 測試路由 (僅開發環境)

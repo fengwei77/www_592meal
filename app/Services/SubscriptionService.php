@@ -415,7 +415,7 @@ class SubscriptionService
 
                 return [
                     'success' => true,
-                    'message' => '取號成功',
+                    'message' => '取號成功，請完成付款',
                     'payment_info' => $paymentLog->getPaymentInfo(),
                 ];
             }
@@ -428,9 +428,21 @@ class SubscriptionService
                 'rtn_msg' => $data['RtnMsg'] ?? null,
             ]);
 
+            $rtnCode = $data['RtnCode'] ?? 'Unknown';
+            $rtnMsg = $data['RtnMsg'] ?? '未知錯誤';
+
+            // 特殊處理：如果 RtnMsg 是 Succeeded，可能是真的成功
+            if (strtolower($rtnMsg) === 'succeeded') {
+                return [
+                    'success' => true,
+                    'message' => '取號成功，請完成付款',
+                    'payment_info' => $paymentLog->getPaymentInfo(),
+                ];
+            }
+
             return [
                 'success' => false,
-                'message' => '取號失敗：' . ($data['RtnMsg'] ?? '未知錯誤'),
+                'message' => "取號處理失敗 (代碼: {$rtnCode})：{$rtnMsg}",
             ];
         } catch (\Exception $e) {
             Log::error('Error handling payment info', [

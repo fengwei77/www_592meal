@@ -46,7 +46,7 @@ class OrderManagementWidget extends Widget
                           });
                 })
                 ->orderBy('created_at', 'desc')
-                ->limit(5)
+                ->limit(0)
                 ->get();
 
             // 統計數據

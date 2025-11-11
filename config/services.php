@@ -53,4 +53,12 @@ return [
         'geocoding_api_key' => env('GOOGLE_GEOCODING_API_KEY'),
     ],
 
+    // 綠界金流設定
+    'ecpay' => [
+        'merchant_id' => env('ECPAY_MERCHANT_ID', '2000132'),
+        'hash_key' => env('ECPAY_HASH_KEY', '5294y06Jb3p6vY0'),
+        'hash_iv' => env('ECPAY_HASH_IV', 'v77hoKGq4bWTcR0z'),
+        'test_mode' => env('ECPAY_TEST_MODE', true),
+    ],
+
 ];

@@ -228,6 +228,21 @@
 
     <!-- 主要內容 -->
     <main class="min-h-screen">
+        <!-- 調試信息 (除生產環境外) -->
+        @if(!app()->environment('production'))
+            <div class="fixed top-0 right-0 bg-yellow-100 p-2 text-xs z-50">
+                <div>LINE登入狀態: {{ session('line_logged_in') ? '已登入' : '未登入' }}</div>
+                <div>Session ID: {{ session()->getId() }}</div>
+                <div>Customer Auth: {{ auth('customer')->check() ? '已登入' : '未登入' }}</div>
+                @if(auth('customer')->check())
+                    <div>Customer ID: {{ auth('customer')->id() }}</div>
+                @endif
+                @if(session('line_user'))
+                    <div>LINE用戶: {{ session('line_user.display_name') }}</div>
+                @endif
+            </div>
+        @endif
+
         @yield('content')
     </main>
 

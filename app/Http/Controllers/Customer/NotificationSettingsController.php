@@ -32,26 +32,12 @@ class NotificationSettingsController extends Controller
      */
     private function getAuthenticatedCustomer(): ?Customer
     {
-        // 檢查 LINE Login session
-        if (!session('line_logged_in') || !session('line_user')) {
+        // 使用 Laravel 認證系統
+        if (!auth('customer')->check()) {
             return null;
         }
 
-        $lineUser = session('line_user');
-        $lineUserId = $lineUser['user_id'] ?? null;
-
-        if (!$lineUserId) {
-            return null;
-        }
-
-        // 根據 LINE ID 查找或建立顧客記錄
-        return Customer::firstOrCreate(
-            ['line_id' => $lineUserId],
-            [
-                'name' => $lineUser['display_name'] ?? '顧客',
-                'avatar_url' => $lineUser['picture_url'] ?? null,
-            ]
-        );
+        return auth('customer')->user();
     }
 
     /**

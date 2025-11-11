@@ -30,11 +30,11 @@ class SubscriptionOrderResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
-    // 只允許老闆和管理員存取
+    // 只允許老闆和超級管理員存取
     public static function canViewAny(): bool
     {
         $user = Auth::user();
-        return $user && ($user->hasRole('store_owner') || $user->hasRole('admin'));
+        return $user && ($user->hasRole('store_owner') || $user->hasRole('super_admin'));
     }
 
     public static function form(Schema $schema): Schema
@@ -163,20 +163,174 @@ class SubscriptionOrderResource extends Resource
                         'paid' => '已付款',
                         'expired' => '已過期',
                         'cancelled' => '已取消',
+                        'failed' => '付款失敗',
                     ]),
+
+                Tables\Filters\SelectFilter::make('user_id')
+                    ->label('用戶')
+                    ->searchable()
+                    ->options(function () {
+                        return User::query()
+                            ->whereHas('roles', function ($query) {
+                                $query->whereIn('name', ['store_owner', 'super_admin']);
+                            })
+                            ->pluck('name', 'id')
+                            ->toArray();
+                    }),
+
+                Tables\Filters\Filter::make('order_number')
+                    ->label('訂單編號')
+                    ->form([
+                        Forms\Components\TextInput::make('order_number')
+                            ->label('訂單編號')
+                            ->placeholder('輸入訂單編號'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query->when(
+                            $data['order_number'],
+                            fn (Builder $query) => $query->where('order_number', 'like', "%{$data['order_number']}%")
+                        );
+                    }),
+
+                Tables\Filters\Filter::make('date_range')
+                    ->label('日期範圍')
+                    ->form([
+                        Forms\Components\DatePicker::make('start_date')
+                            ->label('開始日期'),
+                        Forms\Components\DatePicker::make('end_date')
+                            ->label('結束日期'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                $data['start_date'],
+                                fn (Builder $query) => $query->whereDate('created_at', '>=', $data['start_date'])
+                            )
+                            ->when(
+                                $data['end_date'],
+                                fn (Builder $query) => $query->whereDate('created_at', '<=', $data['end_date'])
+                            );
+                    }),
+
+                Tables\Filters\Filter::make('amount_range')
+                    ->label('金額範圍')
+                    ->form([
+                        Forms\Components\TextInput::make('min_amount')
+                            ->label('最小金額')
+                            ->numeric()
+                            ->prefix('NT$'),
+                        Forms\Components\TextInput::make('max_amount')
+                            ->label('最大金額')
+                            ->numeric()
+                            ->prefix('NT$'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                $data['min_amount'],
+                                fn (Builder $query) => $query->where('total_amount', '>=', $data['min_amount'])
+                            )
+                            ->when(
+                                $data['max_amount'],
+                                fn (Builder $query) => $query->where('total_amount', '<=', $data['max_amount'])
+                            );
+                    }),
             ])
             ->actions([
                 Actions\Action::make('view')
-                    ->label('查看')
+                    ->label('查看詳情')
                     ->icon('heroicon-o-eye')
                     ->color('primary')
                     ->url(fn (SubscriptionOrder $record): string => route('filament.admin.resources.subscription-orders.view', $record)),
+
+                Actions\Action::make('edit_status')
+                    ->label('修改狀態')
+                    ->icon('heroicon-o-pencil')
+                    ->color('warning')
+                    ->visible(fn (SubscriptionOrder $record): bool => auth()->user()->hasRole('super_admin'))
+                    ->form([
+                        Forms\Components\Select::make('status')
+                            ->label('訂單狀態')
+                            ->options([
+                                'pending' => '待付款',
+                                'paid' => '已付款',
+                                'expired' => '已過期',
+                                'cancelled' => '已取消',
+                                'failed' => '付款失敗',
+                            ])
+                            ->required()
+                            ->default(fn (SubscriptionOrder $record) => $record->status),
+
+                        Forms\Components\Textarea::make('admin_notes')
+                            ->label('管理員備註')
+                            ->placeholder('請輸入修改原因或備註...')
+                            ->rows(3)
+                            ->helperText('此備註會記錄到訂單歷史中'),
+                    ])
+                    ->action(function (SubscriptionOrder $record, array $data) {
+                        $oldStatus = $record->status;
+                        $newStatus = $data['status'];
+
+                        // 如果狀態改為已付款，需要添加訂閱期間
+                        if ($oldStatus !== 'paid' && $newStatus === 'paid') {
+                            $user = $record->user;
+                            if ($user) {
+                                // 計算新的訂閱到期日
+                                $currentEndDate = $user->subscription_ends_at;
+                                $startDate = $currentEndDate && $currentEndDate->isFuture()
+                                    ? $currentEndDate
+                                    : now();
+
+                                $newEndDate = $startDate->copy()->addDays($record->months * 30);
+
+                                // 更新用戶訂閱資訊
+                                $user->subscription_ends_at = $newEndDate;
+                                $user->save();
+
+                                \Log::info('Subscription extended by admin', [
+                                    'user_id' => $user->id,
+                                    'order_id' => $record->id,
+                                    'order_number' => $record->order_number,
+                                    'months' => $record->months,
+                                    'start_date' => $startDate->format('Y-m-d'),
+                                    'end_date' => $newEndDate->format('Y-m-d'),
+                                    'admin_id' => auth()->id(),
+                                ]);
+                            }
+                        }
+
+                        // 更新訂單狀態
+                        $record->status = $newStatus;
+
+                        // 添加管理員備註
+                        if (!empty($data['admin_notes'])) {
+                            $record->notes = ($record->notes ?? '') . "\n[管理員 " . auth()->user()->name . " 於 " . now()->format('Y-m-d H:i:s') . "]\n狀態變更: {$oldStatus} → {$newStatus}\n備註: " . $data['admin_notes'];
+                        }
+
+                        $record->save();
+
+                        // 發送通知
+                        $statusText = match($newStatus) {
+                            'pending' => '待付款',
+                            'paid' => '已付款',
+                            'expired' => '已過期',
+                            'cancelled' => '已取消',
+                            'failed' => '付款失敗',
+                            default => $newStatus,
+                        };
+
+                        \Filament\Notifications\Notification::make()
+                            ->title('訂單狀態已更新')
+                            ->body("訂單 {$record->order_number} 狀態已更新為 {$statusText}")
+                            ->success()
+                            ->send();
+                    }),
 
                 Actions\Action::make('pay')
                     ->label('前往付款')
                     ->icon('heroicon-o-credit-card')
                     ->color('success')
-                    ->visible(fn (SubscriptionOrder $record): bool => $record->status === 'pending' && !$record->isExpired())
+                    ->visible(fn (SubscriptionOrder $record): bool => $record->status === 'pending' && !$record->isExpired() && !auth()->user()->hasRole('super_admin'))
                     ->url(fn (SubscriptionOrder $record): string => route('subscription.confirm', $record))
                     ->openUrlInNewTab(),
 
@@ -184,7 +338,7 @@ class SubscriptionOrderResource extends Resource
                     ->label('取消訂單')
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
-                    ->visible(fn (SubscriptionOrder $record): bool => $record->status === 'pending')
+                    ->visible(fn (SubscriptionOrder $record): bool => $record->status === 'pending' && !auth()->user()->hasRole('super_admin'))
                     ->requiresConfirmation()
                     ->modalHeading('確認取消訂單')
                     ->modalDescription('確定要取消這個訂單嗎？此操作無法復原。')
@@ -219,8 +373,8 @@ class SubscriptionOrderResource extends Resource
 
         $user = Auth::user();
 
-        // 如果是老闆角色，只能看到自己的訂單
-        if ($user && $user->hasRole('store_owner') && !$user->hasRole('admin')) {
+        // 如果是老闆角色，只能看到自己的訂單，Super Admin 可以看到所有訂單
+        if ($user && $user->hasRole('store_owner') && !$user->hasRole('super_admin')) {
             $query->where('user_id', $user->id);
         }
 

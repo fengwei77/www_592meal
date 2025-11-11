@@ -24,6 +24,7 @@ class Order extends Model
     protected $fillable = [
         'store_id',
         'customer_id',
+        'user_id', // 用於系統訂閱訂單
         'order_number',
         'customer_name',
         'customer_phone',
@@ -41,6 +42,8 @@ class Order extends Model
         'is_scheduled_order',
         'payment_method',
         'payment_status',
+        'payment_notes',
+        'paid_at',
         'pickup_time',
         'completed_at',
     ];
@@ -415,6 +418,30 @@ class Order extends Model
     public function isRejected(): bool
     {
         return $this->status === 'cancelled' && $this->cancellation_type === 'rejected';
+    }
+
+    /**
+     * 關聯用戶 (系統訂閱訂單)
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    /**
+     * 關聯訂單項目
+     */
+    public function items(): HasMany
+    {
+        return $this->hasMany(OrderItem::class);
+    }
+
+    /**
+     * 關聯付款日誌
+     */
+    public function paymentLogs(): HasMany
+    {
+        return $this->hasMany(SubscriptionPaymentLog::class);
     }
 
     /**

@@ -222,12 +222,14 @@ class EcpayService
     public function isNumberGeneratedSuccess(array $data): bool
     {
         $rtnCode = (int)($data['RtnCode'] ?? 0);
+        $rtnMsg = strtolower($data['RtnMsg'] ?? '');
 
         return match ($rtnCode) {
-            2 => true, // ATM
-            10100073 => true, // CVS/BARCODE
+            2 => true, // ATM 取號成功
+            10100073 => true, // CVS/BARCODE 取號成功
+            1 => true, // 付款成功 (處理一般付款)
             default => false,
-        };
+        } || in_array($rtnMsg, ['succeeded', 'success', '成功']);
     }
 
     /**

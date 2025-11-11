@@ -41,9 +41,9 @@ class ViewSubscriptionOrder extends ViewRecord
     {
         parent::authorizeAccess();
 
-        // 檢查權限 - 用戶只能查看自己的訂單，管理員可以查看所有訂單
+        // 檢查權限 - 用戶只能查看自己的訂單，Super Admin 可以查看所有訂單
         $user = Auth::user();
-        if ($this->record->user_id !== $user->id && !$user->hasRole('admin')) {
+        if ($this->record->user_id !== $user->id && !$user->hasRole('super_admin')) {
             abort(403, '無權存取此訂單');
         }
     }

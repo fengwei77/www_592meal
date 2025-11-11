@@ -6,7 +6,7 @@ use Filament\Widgets\AccountWidget as BaseAccountWidget;
 
 class CustomAccountWidget extends BaseAccountWidget
 {
-    protected static ?int $sort = 5;
+    protected static ?int $sort = 17;
 
     protected int | string | array $columnSpan = 1;
 }

@@ -79,11 +79,7 @@
                             </div>
                         </div>
                     @endif
-
-                    <!-- 快速操作提示 -->
-                    <div class="text-xs text-gray-500 text-center">
-                        💡 前往訂單管理頁面可手動處理問題訂單
-                    </div>
+ 
                 </div>
             </div>
         </div>
