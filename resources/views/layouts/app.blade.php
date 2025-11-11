@@ -175,7 +175,6 @@
                 };
             </script>
         @endif
-    @endif
 
     <!-- 設定 VAPID 公鑰 -->
     <script>
