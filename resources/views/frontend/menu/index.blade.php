@@ -268,7 +268,7 @@ function addToCart(itemId, itemName, price, storeSlug) {
 // 通知功能
 function showNotification(type, message) {
     const notification = document.createElement('div');
-    notification.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 transform transition-all duration-300 ${
+    notification.className = `fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 transform transition-all duration-300 ${
         type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
     }`;
     notification.innerHTML = `
