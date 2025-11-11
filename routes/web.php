@@ -245,6 +245,10 @@ Route::domain(parse_url(config('app.url'), PHP_URL_HOST))->group(function () {
             ->name('customer.notifications.subscriptions.remove-all');
         Route::post('/test', [\App\Http\Controllers\Customer\NotificationSettingsController::class, 'sendTestNotification'])
             ->name('customer.notifications.test');
+        Route::post('/check-subscription', [\App\Http\Controllers\Customer\NotificationSettingsController::class, 'checkSubscription'])
+            ->name('customer.notifications.check-subscription');
+        Route::post('/cleanup', [\App\Http\Controllers\Customer\NotificationSettingsController::class, 'cleanupExpiredSubscriptions'])
+            ->name('customer.notifications.cleanup');
         Route::post('/simulate-subscription', [\App\Http\Controllers\Customer\NotificationSettingsController::class, 'simulateSubscription'])
             ->name('customer.notifications.simulate-subscription');
         Route::get('/debug', [\App\Http\Controllers\Customer\NotificationSettingsController::class, 'debug'])

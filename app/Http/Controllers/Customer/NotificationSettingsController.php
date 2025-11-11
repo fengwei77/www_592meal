@@ -351,6 +351,103 @@ class NotificationSettingsController extends Controller
     }
 
     /**
+     * 清理失效的推播訂閱
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function cleanupExpiredSubscriptions(Request $request): JsonResponse
+    {
+        try {
+            $customer = $this->getAuthenticatedCustomer();
+
+            if (!$customer) {
+                return response()->json([
+                    'success' => false,
+                    'message' => '請先登入 LINE 帳號'
+                ], 401);
+            }
+
+            // 查找並停用過期的訂閱
+            $expiredCount = PushSubscription::where('customer_id', $customer->id)
+                ->where('is_active', true)
+                ->where(function ($query) {
+                    $query->where('last_used_at', '<', now()->subDays(30))
+                        ->orWhere('endpoint', 'like', 'simulation://%');
+                })
+                ->update(['is_active' => false]);
+
+            Log::info('用戶清理失效推播訂閱', [
+                'customer_id' => $customer->id,
+                'cleaned_count' => $expiredCount
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => $expiredCount > 0
+                    ? "已清理 {$expiredCount} 個失效的推播訂閱"
+                    : '沒有找到失效的推播訂閱',
+                'cleaned_count' => $expiredCount
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('清理失效推播訂閱失敗', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => '清理失敗：' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * 檢查推播訂閱是否存在於資料庫中
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function checkSubscription(Request $request): JsonResponse
+    {
+        try {
+            $customer = $this->getAuthenticatedCustomer();
+
+            if (!$customer) {
+                return response()->json([
+                    'success' => false,
+                    'message' => '請先登入 LINE 帳號'
+                ], 401);
+            }
+
+            $request->validate([
+                'endpoint' => 'required|string'
+            ]);
+
+            $subscription = PushSubscription::where('customer_id', $customer->id)
+                ->where('endpoint', $request->input('endpoint'))
+                ->where('is_active', true)
+                ->first();
+
+            return response()->json([
+                'success' => true,
+                'exists' => $subscription !== null
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('檢查推播訂閱失敗', [
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => '檢查失敗：' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * 發送測試推播通知
      *
      * @param Request $request
@@ -414,9 +511,24 @@ class NotificationSettingsController extends Controller
                 Log::warning('測試推播發送失敗，成功計數為 0', [
                     'customer_id' => $customer->id
                 ]);
+
+                // 檢查是否所有訂閱都失效了
+                $activeSubscriptions = PushSubscription::active()
+                    ->forCustomer($customer->id)
+                    ->count();
+
+                $totalSubscriptions = PushSubscription::where('customer_id', $customer->id)->count();
+
+                $message = '推播發送失敗，請稍後再試';
+                if ($totalSubscriptions > 0 && $activeSubscriptions === 0) {
+                    $message = '所有推播訂閱都已失效，請重新啟用推播通知';
+                } elseif ($totalSubscriptions === 0) {
+                    $message = '沒有可用的推播訂閱，請先在此裝置上啟用推播通知';
+                }
+
                 return response()->json([
                     'success' => false,
-                    'message' => '推播發送失敗，請稍後再試'
+                    'message' => $message
                 ], 400);
             }
 
@@ -447,20 +559,63 @@ class NotificationSettingsController extends Controller
             return '未知裝置';
         }
 
-        // 簡單的 User Agent 解析
-        if (str_contains($userAgent, 'Chrome')) {
+        $deviceInfo = [];
+        $browser = '';
+        $os = '';
+        $deviceType = '';
+
+        // 檢測作業系統
+        if (preg_match('/Windows/i', $userAgent)) {
+            $os = 'Windows';
+        } elseif (preg_match('/Mac/i', $userAgent)) {
+            $os = 'macOS';
+        } elseif (preg_match('/iPhone|iPad|iPod/i', $userAgent)) {
+            $os = 'iOS';
+            if (preg_match('/iPhone/i', $userAgent)) {
+                $deviceType = 'iPhone';
+            } elseif (preg_match('/iPad/i', $userAgent)) {
+                $deviceType = 'iPad';
+            } elseif (preg_match('/iPod/i', $userAgent)) {
+                $deviceType = 'iPod';
+            }
+        } elseif (preg_match('/Android/i', $userAgent)) {
+            $os = 'Android';
+            if (preg_match('/Mobile/i', $userAgent)) {
+                $deviceType = 'Android 手機';
+            } else {
+                $deviceType = 'Android 平板';
+            }
+        } elseif (preg_match('/Linux/i', $userAgent)) {
+            $os = 'Linux';
+        }
+
+        // 檢測瀏覽器
+        if (preg_match('/Chrome/i', $userAgent) && !preg_match('/Edg/i', $userAgent)) {
             $browser = 'Chrome';
-        } elseif (str_contains($userAgent, 'Firefox')) {
-            $browser = 'Firefox';
-        } elseif (str_contains($userAgent, 'Safari')) {
-            $browser = 'Safari';
-        } elseif (str_contains($userAgent, 'Edge')) {
+        } elseif (preg_match('/Edg/i', $userAgent)) {
             $browser = 'Edge';
+        } elseif (preg_match('/Firefox/i', $userAgent)) {
+            $browser = 'Firefox';
+        } elseif (preg_match('/Safari/i', $userAgent) && !preg_match('/Chrome/i', $userAgent)) {
+            $browser = 'Safari';
+        } elseif (preg_match('/Opera/i', $userAgent) || preg_match('/OPR/i', $userAgent)) {
+            $browser = 'Opera';
         } else {
             $browser = '未知瀏覽器';
         }
 
-        return $browser;
+        // 組合裝置資訊
+        if ($deviceType) {
+            $deviceInfo[] = $deviceType;
+        } elseif ($os) {
+            $deviceInfo[] = $os;
+        }
+
+        if ($browser && $browser !== '未知瀏覽器') {
+            $deviceInfo[] = $browser;
+        }
+
+        return empty($deviceInfo) ? '未知裝置' : implode(' · ', $deviceInfo);
     }
 
     /**
@@ -475,7 +630,18 @@ class NotificationSettingsController extends Controller
             return 'unknown';
         }
 
-        if (preg_match('/mobile|android|iphone|ipad|ipod/i', $userAgent)) {
+        // 優先檢測具體的裝置類型
+        if (preg_match('/iPhone|iPod/i', $userAgent)) {
+            return 'mobile';
+        } elseif (preg_match('/iPad/i', $userAgent)) {
+            return 'tablet';
+        } elseif (preg_match('/Android/i', $userAgent)) {
+            if (preg_match('/Mobile/i', $userAgent)) {
+                return 'mobile';
+            } else {
+                return 'tablet';
+            }
+        } elseif (preg_match('/mobile/i', $userAgent)) {
             return 'mobile';
         }
 

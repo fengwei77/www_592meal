@@ -477,7 +477,7 @@
                 info: 'fa-info-circle'
             };
 
-            toast.className = `fixed top-20 right-4 ${bgColors[type]} text-white px-6 py-3 rounded-lg shadow-lg z-50 transform transition-all duration-300 flex items-center space-x-2`;
+            toast.className = `fixed bottom-4 right-4 ${bgColors[type]} text-white px-6 py-3 rounded-lg shadow-lg z-50 transform transition-all duration-300 flex items-center space-x-2`;
             toast.innerHTML = `
                 <i class="fas ${icons[type]}"></i>
                 <span>${message}</span>

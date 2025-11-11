@@ -45,7 +45,7 @@
 /* Toast 通知樣式 */
 .toast-container {
     position: fixed;
-    top: 20px;
+    bottom: 20px;
     right: 20px;
     z-index: 9999;
 }
@@ -182,6 +182,18 @@
         </h2>
 
         @if($hasActiveSubscriptions)
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                <div class="flex items-start space-x-2">
+                    <svg class="w-5 h-5 text-blue-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                    </svg>
+                    <div class="text-sm text-blue-800">
+                        <p class="font-medium mb-1">關於裝置訂閱</p>
+                        <p>推播通知是針對每個瀏覽器/裝置獨立的。如果您想在多個裝置上接收通知，需要在每個裝置上分別啟用。</p>
+                    </div>
+                </div>
+            </div>
+
             <p class="text-gray-600 mb-4">以下是已啟用推播通知的裝置：</p>
 
             <div class="space-y-3">
@@ -193,6 +205,10 @@
                                 <svg class="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
                                 </svg>
+                            @elseif($subscription['device_type'] === 'tablet')
+                                <svg class="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                </svg>
                             @else
                                 <svg class="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -200,11 +216,27 @@
                             @endif
 
                             <!-- 裝置資訊 -->
-                            <div>
-                                <div class="font-medium text-gray-900">{{ $subscription['user_agent'] }}</div>
-                                <div class="text-sm text-gray-500">
-                                    最後使用：{{ $subscription['last_used_at'] }}
-                                    · 訂閱日期：{{ $subscription['created_at'] }}
+                            <div class="flex-1">
+                                <div class="flex items-center space-x-2">
+                                    <div class="font-medium text-gray-900">{{ $subscription['user_agent'] }}</div>
+                                    <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                                        啟用中
+                                    </span>
+                                </div>
+                                <div class="text-sm text-gray-500 mt-1">
+                                    <span class="inline-flex items-center">
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                        </svg>
+                                        訂閱：{{ $subscription['created_at'] }}
+                                    </span>
+                                    <span class="mx-2">·</span>
+                                    <span class="inline-flex items-center">
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        最後使用：{{ $subscription['last_used_at'] }}
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -224,24 +256,28 @@
                         class="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition font-medium">
                     發送測試通知
                 </button>
+                <button id="cleanupBtn"
+                        class="flex-1 bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition font-medium">
+                    清理失效訂閱
+                </button>
                 <button id="removeAllBtn"
                         class="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition font-medium">
                     取消所有訂閱
                 </button>
             </div>
-        @else
-            <!-- 沒有訂閱時顯示 -->
-            <div class="text-center py-8">
-                <svg class="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-                </svg>
-                <p class="text-gray-600 mb-4">您目前沒有啟用推播通知的裝置</p>
-                <button id="enablePushBtn"
-                        class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition font-medium">
-                    在此裝置上啟用推播
-                </button>
-            </div>
         @endif
+
+        <!-- 總是顯示啟用按鈕區域，但根據當前瀏覽器狀態調整內容 -->
+        <div class="mt-6 text-center" id="enablePushSection">
+            <!-- 這裡的內容將由 JavaScript 根據當前瀏覽器狀態動態生成 -->
+            <div class="text-gray-600 mb-4">
+                <span id="enablePushText">正在檢查此裝置的推播狀態...</span>
+            </div>
+            <button id="enablePushBtn"
+                    class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition font-medium">
+                檢查中...
+            </button>
+        </div>
     </div>
 
     <!-- 說明資訊 -->
@@ -255,11 +291,34 @@
         <ul class="text-sm text-blue-800 space-y-1">
             <li>• 推播通知會在訂單狀態變更時即時通知您</li>
             <li>• 即使瀏覽器關閉也能收到通知（需要開啟權限）</li>
-            <li>• 您可以在不同裝置上啟用推播通知</li>
+            <li>• <strong>多裝置支援</strong>：每個瀏覽器/裝置需要分別啟用推播通知</li>
+            <li>• <strong>如何在多個裝置上啟用</strong>：用您的 LINE 帳號登入每個裝置，然後點擊「在此裝置上啟用推播」</li>
             <li>• 推播通知需要 HTTPS 連線</li>
             <li>• 如果瀏覽器封鎖了推播權限，請到瀏覽器設定中手動開啟</li>
         </ul>
+
+        <div class="mt-4 p-3 bg-blue-100 rounded-lg">
+            <p class="text-xs text-blue-700">
+                <strong>💡 小提示：</strong>建議在您常用的所有裝置上都啟用推播通知，這樣就不會錯過任何重要的訂單更新了！
+            </p>
+        </div>
     </div>
+</div>
+
+<!-- 調試工具（開發用） -->
+<div class="mt-4 p-3 bg-gray-100 rounded-lg text-xs">
+    <details>
+        <summary class="cursor-pointer font-medium text-gray-700">調試工具</summary>
+        <div class="mt-2 space-y-2">
+            <button onclick="checkPushStatus()" class="bg-gray-600 text-white px-3 py-1 rounded text-xs hover:bg-gray-700">
+                檢查推播狀態
+            </button>
+            <button onclick="clearOldSubscription()" class="bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700">
+                清除舊訂閱
+            </button>
+            <div id="debug-output" class="mt-2 p-2 bg-white border rounded text-gray-600 font-mono"></div>
+        </div>
+    </details>
 </div>
 
 <!-- Toast 通知容器 -->
@@ -324,10 +383,45 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             // 生產環境的正常流程
             const customerId = {{ $customer->id }};
+
+            // 如果有舊的訂閱，先嘗試清除
+            if (window.existingSubscription) {
+                console.log('清除舊的推播訂閱...');
+                try {
+                    await window.existingSubscription.unsubscribe();
+                    console.log('舊訂閱已清除');
+                } catch (error) {
+                    console.warn('清除舊訂閱失敗:', error);
+                }
+                window.existingSubscription = null;
+            }
+
             const subscribed = await window.pushManager.subscribe(customerId);
 
             if (subscribed) {
                 showToast('推播通知已啟用！', 'success');
+
+                // 更新按鈕狀態
+                const enableBtn = document.getElementById('enablePushBtn');
+                const enableText = document.getElementById('enablePushText');
+                if (enableBtn) {
+                    enableBtn.textContent = '此裝置已啟用推播';
+                    enableBtn.disabled = true;
+                    enableBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700', 'bg-orange-600', 'hover:bg-orange-700');
+                    enableBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
+
+                    if (enableText) {
+                        enableText.textContent = '此裝置已啟用推播通知';
+                    }
+
+                    // 移除重新啟用提示
+                    const hint = enableBtn.parentElement?.querySelector('.re-activate-hint');
+                    if (hint) {
+                        hint.remove();
+                    }
+                }
+
+                // 延遲重新載入頁面以顯示新的訂閱
                 setTimeout(() => window.location.reload(), 1500);
             } else {
                 alert('推播通知啟用失敗，請確認已授予推播權限');
@@ -417,6 +511,29 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     };
 
+    window.cleanupExpiredSubscriptions = async function() {
+    if (!confirm('確定要清理所有失效的推播訂閱嗎？這將移除過期或無效的訂閱記錄。')) {
+        return;
+    }
+
+    try {
+        const response = await axios.post('/customer/notifications/cleanup');
+
+        if (response.data.success) {
+            showToast(response.data.message, 'success');
+            if (response.data.cleaned_count > 0) {
+                // 清理了失效訂閱，重新載入頁面
+                setTimeout(() => window.location.reload(), 1500);
+            }
+        } else {
+            showToast(response.data.message || '清理失敗', 'error');
+        }
+    } catch (error) {
+        console.error('清理失效訂閱失敗:', error);
+        showToast('清理失敗：' + (error.response?.data?.message || '網路錯誤'), 'error');
+    }
+    };
+
     // 更新通知偏好
     document.querySelectorAll('.notification-toggle').forEach(toggle => {
     toggle.addEventListener('change', async function() {
@@ -469,12 +586,125 @@ document.addEventListener('DOMContentLoaded', function() {
     // 添加按鈕事件監聽器
     const enablePushBtn = document.getElementById('enablePushBtn');
     if (enablePushBtn) {
-        enablePushBtn.addEventListener('click', window.enablePushNotifications);
+        // 確保按鈕初始狀態是可點擊的
+        enablePushBtn.disabled = false;
+        enablePushBtn.style.pointerEvents = 'auto';
+        enablePushBtn.style.cursor = 'pointer';
+
+        enablePushBtn.addEventListener('click', function(e) {
+            console.log('啟用推播按鈕被點擊');
+            e.preventDefault();
+            e.stopPropagation();
+            window.enablePushNotifications();
+        });
+
+        // 檢查當前瀏覽器是否已經有推播訂閱
+        checkCurrentBrowserSubscription();
+
+        function checkCurrentBrowserSubscription() {
+            const enableText = document.getElementById('enablePushText');
+            const enableSection = document.getElementById('enablePushSection');
+
+            if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+                // 瀏覽器不支援推播
+                enableText.textContent = '此瀏覽器不支援推播通知';
+                enablePushBtn.textContent = '不支援推播';
+                enablePushBtn.disabled = true;
+                enablePushBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700', 'bg-orange-600', 'hover:bg-orange-700');
+                enablePushBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
+                return;
+            }
+
+            // 檢查權限狀態
+            if (Notification.permission === 'denied') {
+                enableText.textContent = '推播通知權限已被封鎖';
+                enablePushBtn.textContent = '權限已被封鎖';
+                enablePushBtn.disabled = true;
+                enablePushBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700', 'bg-orange-600', 'hover:bg-orange-700');
+                enablePushBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
+                return;
+            }
+
+            // 檢查現有訂閱
+            navigator.serviceWorker.ready.then(registration => {
+                return registration.pushManager.getSubscription();
+            }).then(subscription => {
+                // 檢查這個訂閱是否在資料庫中存在且啟用
+                return checkSubscriptionInDatabase(subscription);
+            }).then(isActive => {
+                if (isActive) {
+                    // 當前瀏覽器有有效的訂閱
+                    enableText.textContent = '此裝置已啟用推播通知';
+                    enablePushBtn.textContent = '此裝置已啟用推播';
+                    enablePushBtn.disabled = true;
+                    enablePushBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700', 'bg-orange-600', 'hover:bg-orange-700');
+                    enablePushBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
+                } else {
+                    // 當前瀏覽器沒有有效訂閱
+                    const hasOtherSubscriptions = {{ $hasActiveSubscriptions ? 'true' : 'false' }};
+                    if (hasOtherSubscriptions) {
+                        enableText.textContent = '檢測到其他裝置已啟用推播，您可以在此裝置上也啟用';
+                    } else {
+                        enableText.textContent = '在此裝置上啟用推播通知，即時接收訂單更新';
+                    }
+                    enablePushBtn.textContent = '在此裝置上啟用推播';
+                    enablePushBtn.disabled = false;
+                    enablePushBtn.classList.remove('bg-gray-400', 'cursor-not-allowed', 'bg-orange-600', 'hover:bg-orange-700');
+                    enablePushBtn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+                    enablePushBtn.style.cursor = 'pointer';
+                }
+            }).catch(error => {
+                console.log('檢查推播訂閱狀態失敗:', error);
+                enableText.textContent = '檢查推播狀態時發生錯誤，請重新整理頁面';
+                enablePushBtn.textContent = '重新檢查';
+                enablePushBtn.classList.remove('bg-gray-400', 'cursor-not-allowed');
+                enablePushBtn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+            });
+        }
+
+        // 檢查訂閱是否在資料庫中存在且啟用
+        function checkSubscriptionInDatabase(subscription) {
+            if (!subscription) {
+                return Promise.resolve(false);
+            }
+
+            return fetch('/customer/notifications/check-subscription', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify({
+                    endpoint: subscription.endpoint
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.exists) {
+                    console.log('訂閱在資料庫中存在且啟用');
+                    return true;
+                } else {
+                    console.log('訂閱在資料庫中不存在或已停用');
+                    // 保存舊訂閱以便清除
+                    window.existingSubscription = subscription;
+                    return false;
+                }
+            })
+            .catch(error => {
+                console.log('檢查資料庫訂閱失敗:', error);
+                return false;
+            });
+        }
     }
 
     const sendTestBtn = document.getElementById('sendTestBtn');
     if (sendTestBtn) {
         sendTestBtn.addEventListener('click', window.sendTestNotification);
+    }
+
+    const cleanupBtn = document.getElementById('cleanupBtn');
+    if (cleanupBtn) {
+        cleanupBtn.addEventListener('click', window.cleanupExpiredSubscriptions);
     }
 
     const removeAllBtn = document.getElementById('removeAllBtn');
@@ -489,6 +719,64 @@ document.addEventListener('DOMContentLoaded', function() {
             window.removeSubscription(subscriptionId);
         });
     });
+  // 調試函數
+    window.checkPushStatus = function() {
+        const output = document.getElementById('debug-output');
+        let status = [];
+
+        status.push('=== 推播狀態檢查 ===');
+        status.push('Service Worker: ' + ('serviceWorker' in navigator ? '✅ 支援' : '❌ 不支援'));
+        status.push('Push Manager: ' + ('PushManager' in window ? '✅ 支援' : '❌ 不支援'));
+        status.push('Notification Permission: ' + Notification.permission);
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.ready.then(registration => {
+                return registration.pushManager.getSubscription();
+            }).then(subscription => {
+                if (subscription) {
+                    status.push('舊訂閱: ✅ 找到 (' + subscription.endpoint.substring(0, 50) + '...)');
+                } else {
+                    status.push('舊訂閱: ❌ 未找到');
+                }
+                status.push('=== 檢查完成 ===');
+                output.textContent = status.join('\n');
+            }).catch(error => {
+                status.push('錯誤: ' + error.message);
+                output.textContent = status.join('\n');
+            });
+        } else {
+            status.push('=== 檢查完成 ===');
+            output.textContent = status.join('\n');
+        }
+    };
+
+    window.clearOldSubscription = function() {
+        const output = document.getElementById('debug-output');
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.ready.then(registration => {
+                return registration.pushManager.getSubscription();
+            }).then(subscription => {
+                if (subscription) {
+                    subscription.unsubscribe().then(success => {
+                        if (success) {
+                            output.textContent = '✅ 舊訂閱已清除\n請重新載入頁面並重新啟用推播';
+                            setTimeout(() => window.location.reload(), 2000);
+                        } else {
+                            output.textContent = '❌ 清除舊訂閱失敗';
+                        }
+                    });
+                } else {
+                    output.textContent = 'ℹ️ 沒有找到舊訂閱';
+                }
+            }).catch(error => {
+                output.textContent = '❌ 清除失敗: ' + error.message;
+            });
+        } else {
+            output.textContent = '❌ 瀏覽器不支援 Service Worker';
+        }
+    };
+
 }); // 結束 DOMContentLoaded
 </script>
 @endpush

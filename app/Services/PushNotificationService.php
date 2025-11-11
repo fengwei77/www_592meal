@@ -134,18 +134,19 @@ class PushNotificationService
                         'order_id' => $order->id
                     ]);
                 } else {
+                    $reason = $report->getReason();
                     Log::warning('推播發送失敗', [
                         'endpoint' => substr($endpoint, 0, 50) . '...',
-                        'reason' => $report->getReason()
+                        'reason' => $reason
                     ]);
 
-                    // 如果訂閱已過期，標記為失效
-                    if ($report->isSubscriptionExpired()) {
+                    // 如果訂閱已過期或是 410 Gone，標記為失效
+                    if ($report->isSubscriptionExpired() || str_contains($reason, '410 Gone') || str_contains($reason, '404 Not Found')) {
                         $subscription = PushSubscription::where('endpoint', $endpoint)->first();
                         if ($subscription) {
                             $subscription->markAsInactive();
                             $failedSubscriptions[] = $subscription->id;
-                            Log::info('訂閱已過期，已標記為失效', [
+                            Log::info('訂閱已過期或失效，已標記為失效', [
                                 'subscription_id' => $subscription->id
                             ]);
                         }
@@ -303,16 +304,24 @@ class PushNotificationService
         // 批次發送非模擬訂閱的推播
         try {
             foreach ($this->webPush->flush() as $report) {
+                $endpoint = $report->getRequest()->getUri()->__toString();
+
                 if ($report->isSuccess()) {
                     $successCount++;
                     Log::info('測試推播發送成功', [
-                        'endpoint' => substr($report->getRequest()->getUri()->__toString(), 0, 50) . '...'
+                        'endpoint' => substr($endpoint, 0, 50) . '...'
                     ]);
                 } else {
+                    $reason = $report->getReason();
                     Log::warning('測試推播發送失敗', [
-                        'endpoint' => substr($report->getRequest()->getUri()->__toString(), 0, 50) . '...',
-                        'reason' => $report->getReason()
+                        'endpoint' => substr($endpoint, 0, 50) . '...',
+                        'reason' => $reason
                     ]);
+
+                    // 如果是 410 Gone 或 404 Not Found，自動標記訂閱為失效
+                    if (str_contains($reason, '410 Gone') || str_contains($reason, '404 Not Found')) {
+                        $this->deactivateSubscriptionByEndpoint($endpoint);
+                    }
                 }
             }
         } catch (\Exception $e) {
@@ -322,5 +331,33 @@ class PushNotificationService
         }
 
         return $successCount;
+    }
+
+    /**
+     * 根據 endpoint 停用失效的推播訂閱
+     *
+     * @param string $endpoint
+     * @return void
+     */
+    private function deactivateSubscriptionByEndpoint(string $endpoint): void
+    {
+        try {
+            $subscription = PushSubscription::where('endpoint', $endpoint)->first();
+
+            if ($subscription && $subscription->is_active) {
+                $subscription->update(['is_active' => false]);
+
+                Log::info('已自動停用失效的推播訂閱', [
+                    'subscription_id' => $subscription->id,
+                    'customer_id' => $subscription->customer_id,
+                    'endpoint' => substr($endpoint, 0, 50) . '...'
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('停用失效推播訂閱失敗', [
+                'endpoint' => substr($endpoint, 0, 50) . '...',
+                'error' => $e->getMessage()
+            ]);
+        }
     }
 }

@@ -118,18 +118,17 @@ self.addEventListener('notificationclick', event => {
         event.waitUntil(
             clients.matchAll({ type: 'window', includeUncontrolled: true })
                 .then(clientList => {
-                    const orderId = event.notification.data.order_id;
-                    const url = orderId ? `/orders/${orderId}` : '/orders';
+                    // 改為導向到首頁
+                    const url = '/';
 
                     // 檢查是否已有開啟的視窗
                     for (const client of clientList) {
-                        if (client.url.includes('/orders') && 'focus' in client) {
+                        if (client.url.includes('app.592meal.online') && 'focus' in client) {
                             return client.focus().then(client => {
                                 // 可選：發送訊息給頁面更新內容
                                 if ('postMessage' in client) {
                                     client.postMessage({
-                                        type: 'NAVIGATE_TO_ORDER',
-                                        orderId: orderId
+                                        type: 'NAVIGATE_TO_HOME'
                                     });
                                 }
                                 return client;
