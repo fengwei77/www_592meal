@@ -40,6 +40,7 @@
             font-weight: 400;
             font-style: normal;
             color: #FB923C; /* 橘色 */
+            font-size: 1.8em;
         }
 
         /* 前台內容文字標題 */
