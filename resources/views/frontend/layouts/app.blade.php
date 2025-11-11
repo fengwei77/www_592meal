@@ -97,14 +97,8 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16">
                 <div class="flex items-center">
-                    <!-- 店家名稱 -->
-                    @if(isset($current_store))
-                        <h1 class="text-xl font-semibold text-gray-900 site-name">
-                            {{ $current_store->name }}
-                        </h1>
-                    @else
-                        <h1 class="text-4xl font-semibold text-gray-900 site-name">592Meal</h1>
-                    @endif
+                    <!-- 品牌名稱 -->
+                    <h1 class="text-xl font-semibold text-gray-900 site-name">592Meal</h1>
                 </div>
 
                 <div class="flex items-center space-x-4">
