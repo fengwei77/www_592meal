@@ -73,4 +73,8 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
-    })->create();
+    })
+    ->withSingletons([
+        // Laravel 12: 明確定義單例服務
+    ])
+    ->create();
