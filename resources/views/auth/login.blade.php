@@ -35,7 +35,7 @@
                 @endif
 
                 <!-- LINE Login Button -->
-                <a href="{{ route('auth.line') }}"
+                <a href="{{ route('line.login') }}"
                    class="flex items-center justify-center w-full px-4 py-3 text-white font-medium rounded-lg transition-all duration-200 hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
                    style="background-color: #06C755;">
                     <!-- LINE Icon -->
