@@ -50,6 +50,8 @@ class AdminPanelProvider extends PanelProvider
                 \App\Filament\Pages\SecuritySettings::class,
                 \App\Filament\Pages\ManageSubscription::class,
                 \App\Filament\Pages\SystemManagement::class,
+                \App\Filament\Pages\SubscriptionManagement::class,
+                \App\Filament\Pages\OrderManagement::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->widgets([

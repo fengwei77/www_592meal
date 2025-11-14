@@ -176,7 +176,8 @@ class OrderManagementController extends Controller
 
             DB::commit();
 
-            // TODO: 發送退單通知給客戶
+            // 發送退單通知給客戶
+            $this->sendPushNotification($order, 'cancelled');
 
             return response()->json([
                 'success' => true,

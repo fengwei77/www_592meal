@@ -227,7 +227,7 @@ class OrderController extends Controller
                 ->with('error', '請先登入 LINE 以查看您的訂單');
         }
 
-        $lineUserId = session('line_user.user_id');
+        $lineUserId = auth('customer')->user()->line_id;
 
         // 查詢該用戶的所有訂單，按建立時間倒序排列
         $orders = Order::where('line_user_id', $lineUserId)
@@ -257,7 +257,7 @@ class OrderController extends Controller
                 ->with('error', '請先登入 LINE');
         }
 
-        $lineUserId = session('line_user.user_id');
+        $lineUserId = auth('customer')->user()->line_id;
 
         // 查詢訂單並確認屬於當前用戶
         $order = Order::where('order_number', $orderNumber)
@@ -314,7 +314,7 @@ class OrderController extends Controller
             ], 401);
         }
 
-        $lineUserId = session('line_user.user_id');
+        $lineUserId = auth('customer')->user()->line_id;
 
         try {
             DB::beginTransaction();

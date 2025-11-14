@@ -119,97 +119,113 @@
                 <!-- 菜單項目網格 -->
                 <div id="items-grid" class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     @foreach($items as $item)
-                        <div class="menu-item-card item-card" data-price="{{ $item->price }}" data-name="{{ $item->name }}">
+                        <div class="menu-item-card bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200 hover:shadow-lg transition-shadow duration-200 flex flex-col h-full item-card" data-price="{{ $item->price }}" data-name="{{ $item->name }}">
                             <!-- 商品圖片 -->
-                            @if($item->getImageUrl())
-                                <div class="relative h-48 bg-gray-100">
-                                    <img src="{{ $item->getImageUrl() }}"
-                                         alt="{{ $item->name }}"
-                                         class="w-full h-full object-cover">
+                            <div class="relative flex-shrink-0">
+                                @if($item->getImageUrl())
+                                    <div class="h-48 bg-gray-100">
+                                        <img src="{{ $item->getImageUrl() }}"
+                                             alt="{{ $item->name }}"
+                                             class="w-full h-full object-cover">
 
-                                    <!-- 可用狀態標籤 -->
-                                    @if(!$item->is_available)
-                                        <div class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                                            <span class="bg-red-500 text-white px-3 py-1 rounded-full text-sm">
-                                                暫時供應完畢
-                                            </span>
-                                        </div>
-                                    @endif
+                                        <!-- 可用狀態標籤 -->
+                                        @if(!$item->is_available)
+                                            <div class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                                                <span class="bg-red-500 text-white px-3 py-1 rounded-full text-sm">
+                                                    暫時供應完畢
+                                                </span>
+                                            </div>
+                                        @endif
 
-                                    <!-- 標籤 -->
-                                    @if($item->is_popular)
-                                        <div class="absolute top-2 left-2">
-                                            <span class="bg-red-500 text-white px-2 py-1 rounded-full text-xs">
-                                                <i class="fas fa-star mr-1"></i>熱門
-                                            </span>
-                                        </div>
-                                    @endif
-                                    @if($item->is_new)
-                                        <div class="absolute top-2 left-2">
-                                            <span class="bg-green-500 text-white px-2 py-1 rounded-full text-xs">
-                                                <i class="fas fa-sparkles mr-1"></i>新品
-                                            </span>
-                                        </div>
-                                    @endif
-                                </div>
-                            @else
-                                <div class="relative h-48 bg-gray-100 flex items-center justify-center">
-                                    <i class="fas fa-utensils text-4xl text-gray-400"></i>
-                                    @if(!$item->is_available)
-                                        <div class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                                            <span class="bg-red-500 text-white px-3 py-1 rounded-full text-sm">
-                                                暫時供應完畢
-                                            </span>
-                                        </div>
-                                    @endif
-                                </div>
-                            @endif
+                                        <!-- 標籤 -->
+                                        @if($item->is_popular)
+                                            <div class="absolute top-2 left-2">
+                                                <span class="bg-red-500 text-white px-2 py-1 rounded-full text-xs">
+                                                    <i class="fas fa-star mr-1"></i>熱門
+                                                </span>
+                                            </div>
+                                        @endif
+                                        @if($item->is_new)
+                                            <div class="absolute top-2 left-2">
+                                                <span class="bg-green-500 text-white px-2 py-1 rounded-full text-xs">
+                                                    <i class="fas fa-sparkles mr-1"></i>新品
+                                                </span>
+                                            </div>
+                                        @endif
+                                    </div>
+                                @else
+                                    <div class="h-48 bg-gray-100 flex items-center justify-center">
+                                        <i class="fas fa-utensils text-4xl text-gray-400"></i>
+                                        @if(!$item->is_available)
+                                            <div class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                                                <span class="bg-red-500 text-white px-3 py-1 rounded-full text-sm">
+                                                    暫時供應完畢
+                                                </span>
+                                            </div>
+                                        @endif
+                                    </div>
+                                @endif
+                            </div>
 
                             <!-- 商品資訊 -->
-                            <div class="p-4">
-                                <div class="flex justify-between items-start mb-2">
-                                    <h3 class="text-lg font-semibold text-gray-900">{{ $item->name }}</h3>
-                                    <span class="price-tag">${{ number_format($item->price, 0) }}</span>
+                            <div class="p-4 flex-1 flex flex-col">
+                                <div class="flex justify-between items-start mb-3">
+                                    <h3 class="text-lg font-semibold text-gray-900 flex-1 pr-3">{{ $item->name }}</h3>
+                                    <div class="flex-shrink-0">
+                                        <span class="text-xl font-bold text-green-600">${{ number_format($item->price, 0) }}</span>
+                                    </div>
                                 </div>
 
-                                @if($item->description)
-                                    <p class="text-gray-600 text-sm mb-3 line-clamp-2">{{ $item->description }}</p>
+                                <!-- 描述，如果有 -->
+                                @if($item->description && trim($item->description))
+                                    <p class="text-gray-600 text-sm mb-3 line-clamp-2 flex-1">{{ $item->description }}</p>
+                                @else
+                                    <p class="text-gray-400 text-sm mb-3 italic">暫無詳細描述</p>
                                 @endif
 
                                 <!-- 額外資訊 -->
                                 @if($item->preparation_time || $item->spicy_level || $item->ingredients)
-                                    <div class="flex flex-wrap gap-2 mb-3">
+                                    <div class="flex flex-wrap gap-2 mb-4">
                                         @if($item->preparation_time)
-                                            <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                                            <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
                                                 <i class="fas fa-clock mr-1"></i>{{ $item->preparation_time }} 分鐘
                                             </span>
                                         @endif
                                         @if($item->spicy_level)
-                                            <span class="text-xs bg-red-100 text-red-800 px-2 py-1 rounded">
+                                            <span class="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">
                                                 <i class="fas fa-fire mr-1"></i>辣度 {{ $item->spicy_level }}
                                             </span>
                                         @endif
                                         @if($item->is_vegetarian)
-                                            <span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                                            <span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
                                                 <i class="fas fa-leaf mr-1"></i>素食
+                                            </span>
+                                        @endif
+                                        @if($item->ingredients)
+                                            <span class="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded-full">
+                                                <i class="fas fa-list mr-1"></i>{{ $item->ingredients }}
                                             </span>
                                         @endif
                                     </div>
                                 @endif
 
-                                <!-- 加入購物車按鈕 -->
-                                <button onclick="addToCart({{ $item->id }}, '{{ $item->name }}', {{ $item->price }})"
+                                <!-- 按鈕區域 - 置底 -->
+                                <div class="mt-auto pt-3 border-t border-gray-100">
+                                    <button onclick="addToCart({{ $item->id }}, '{{ $item->name }}', {{ $item->price }})"
                                         @if(!$item->is_available) disabled @endif
-                                        class="w-full py-2 px-4 rounded-lg font-medium transition-colors
+                                        class="w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 transform hover:scale-[1.02]
                                                {{ $item->is_available
-                                                   ? 'bg-blue-600 text-white hover:bg-blue-700'
-                                                   : 'bg-gray-300 text-gray-500 cursor-not-allowed' }}">
-                                    @if($item->is_available)
-                                        <i class="fas fa-cart-plus mr-2"></i>加入購物車
-                                    @else
-                                        <i class="fas fa-times-circle mr-2"></i>暫時供應完畢
-                                    @endif
-                                </button>
+                                                   ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800 shadow-md hover:shadow-lg'
+                                                   : 'bg-gray-200 text-gray-500 cursor-not-allowed' }}">
+                                        @if($item->is_available)
+                                            <i class="fas fa-shopping-cart mr-2"></i>
+                                            <span class="font-medium">加入購物車</span>
+                                        @else
+                                            <i class="fas fa-times-circle mr-2"></i>
+                                            <span class="font-medium">暫時供應完畢</span>
+                                        @endif
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     @endforeach

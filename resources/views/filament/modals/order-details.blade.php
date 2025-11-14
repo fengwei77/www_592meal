@@ -9,7 +9,16 @@
             </div>
             <div class="flex justify-between">
                 <span class="text-gray-600 dark:text-gray-300">用戶：</span>
-                <span class="font-medium">{{ $order->user->name }} ({{ $order->user->email }})</span>
+                <span class="font-medium">
+                    @if($order->user)
+                        {{ $order->user->name }} ({{ $order->user->email }})
+                    @elseif($order->customer)
+                        {{ $order->customer->name ?? $order->customer_name ?? '未知用戶' }}
+                        ({{ $order->customer->email ?? $order->customer_email ?? '無郵箱' }})
+                    @else
+                        {{ $order->customer_name ?? '未知用戶' }} ({{ $order->customer_email ?? '無郵箱' }})
+                    @endif
+                </span>
             </div>
             <div class="flex justify-between">
                 <span class="text-gray-600 dark:text-gray-300">金額：</span>
@@ -51,7 +60,7 @@
     </div>
 
     <!-- 訂單項目 -->
-    @if($order->items->count() > 0)
+    @if($order->items && $order->items->count() > 0)
     <div>
         <h4 class="font-medium text-gray-900 dark:text-white mb-2">訂單項目</h4>
         <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
@@ -101,7 +110,7 @@
     @endif
 
     <!-- 相關日誌 -->
-    @if($order->paymentLogs->count() > 0)
+    @if($order->paymentLogs && $order->paymentLogs->count() > 0)
     <div>
         <h4 class="font-medium text-gray-900 dark:text-white mb-2">付款日誌</h4>
         <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 space-y-2">

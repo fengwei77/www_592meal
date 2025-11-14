@@ -184,8 +184,8 @@ Route::domain(parse_url(config('app.url'), PHP_URL_HOST))->group(function () {
 
     // LINE Login routes (with rate limiting to prevent abuse) - 已移至全域路由，避免衝突
 
-    // Logout route (顧客登出)
-    Route::post('/logout', function () {
+    // Logout route (顧客登出) - 支持 GET 和 POST 方法
+    Route::match(['get', 'post'], '/logout', function () {
         Auth::guard('customer')->logout();
         request()->session()->invalidate();
         request()->session()->regenerateToken();

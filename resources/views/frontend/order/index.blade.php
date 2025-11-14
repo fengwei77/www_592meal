@@ -14,7 +14,7 @@
                     </h1>
                     @if(auth('customer')->check())
                         <p class="mt-1 text-sm text-gray-500 frontend-content">
-                            <i class="fab fa-line mr-1 text-green-600"></i>{{ session('line_user.display_name') }}
+                            <i class="fab fa-line mr-1 text-green-600"></i>{{ auth('customer')->user()->name }}
                         </p>
                     @endif
                 </div>

@@ -150,7 +150,7 @@
             </div>
 
             <!-- 完成通知 -->
-            <div class="flex items-start justify-between py-3">
+            <div class="flex items-start justify-between py-3 border-b border-gray-200">
                 <div class="flex-1">
                     <label for="notification_ready" class="font-medium text-gray-900 block">
                         完成通知
@@ -169,7 +169,29 @@
                     </label>
                 </div>
             </div>
-        </div>
+
+            <!-- 退單通知 -->
+            <div class="flex items-start justify-between py-3 border-b border-gray-200">
+                <div class="flex-1">
+                    <label for="notification_cancelled" class="font-medium text-gray-900 block">
+                        退單通知
+                    </label>
+                    <p class="text-sm text-gray-600 mt-1">訂單被取消或退單時通知您</p>
+                </div>
+                <div class="ml-4">
+                    <label class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+                        <input type="checkbox"
+                               id="notification_cancelled"
+                               name="notification_cancelled"
+                               {{ $customer->notification_cancelled ? 'checked' : '' }}
+                               class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-200 ease-in notification-toggle"
+                               data-type="cancelled">
+                        <label for="notification_cancelled" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer transition-all duration-200 ease-in"></label>
+                    </label>
+                </div>
+            </div>
+
+            </div>
     </div>
 
     <!-- 推播訂閱管理 -->
@@ -293,6 +315,7 @@
             <li>• 即使瀏覽器關閉也能收到通知（需要開啟權限）</li>
             <li>• <strong>多裝置支援</strong>：每個瀏覽器/裝置需要分別啟用推播通知</li>
             <li>• <strong>如何在多個裝置上啟用</strong>：用您的 LINE 帳號登入每個裝置，然後點擊「在此裝置上啟用推播」</li>
+            <li>• <strong>退單通知</strong>：當訂單被取消或您取消訂單時會收到通知</li>
             <li>• 推播通知需要 HTTPS 連線</li>
             <li>• 如果瀏覽器封鎖了推播權限，請到瀏覽器設定中手動開啟</li>
         </ul>

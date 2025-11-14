@@ -19,8 +19,8 @@ Route::prefix('store/{storeSlug}')
         Route::post('/staff/login', [StaffAuthController::class, 'login'])
             ->name('store.staff.login.submit');
 
-        // 店員登出
-        Route::post('/staff/logout', [StaffAuthController::class, 'logout'])
+        // 店員登出 - 支持 GET 和 POST 方法
+        Route::match(['get', 'post'], '/staff/logout', [StaffAuthController::class, 'logout'])
             ->name('store.staff.logout');
     });
 

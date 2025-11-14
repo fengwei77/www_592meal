@@ -150,31 +150,38 @@
 
                     <div class="p-6 space-y-4">
                         <!-- 姓名 -->
-                        <div>
-                            <label for="customer_name" class="block text-sm font-medium text-gray-700 mb-2">
-                                姓名 <span class="text-red-500">*</span>
-                                @if(auth('customer')->check())
+                        @if(auth('customer')->check())
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    姓名
                                     <span class="text-xs text-green-600 ml-2">
                                         <i class="fab fa-line mr-1"></i>已從 LINE 登入
                                     </span>
-                                @endif
-                            </label>
-                            <input type="text"
-                                   id="customer_name"
-                                   name="customer_name"
-                                   value="{{ old('customer_name', session('line_user.display_name', '')) }}"
-                                   required
-                                   maxlength="100"
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                                   placeholder="請輸入您的姓名"
-                                   @if(auth('customer')->check()) readonly @endif>
-                            @if(auth('customer')->check())
-                                <p class="mt-1 text-xs text-gray-500">LINE 登入的姓名將自動填入</p>
-                            @endif
-                            @error('customer_name')
-                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                            @enderror
-                        </div>
+                                </label>
+                                <div class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md">
+                                    <span class="text-gray-900">{{ auth('customer')->user()->name }}</span>
+                                </div>
+                                <input type="hidden" name="customer_name" value="{{ auth('customer')->user()->name }}" required>
+                                <p class="mt-1 text-xs text-gray-500">LINE 登入的姓名已自動填入</p>
+                            </div>
+                        @else
+                            <div>
+                                <label for="customer_name" class="block text-sm font-medium text-gray-700 mb-2">
+                                    姓名 <span class="text-red-500">*</span>
+                                </label>
+                                <input type="text"
+                                       id="customer_name"
+                                       name="customer_name"
+                                       value="{{ old('customer_name') }}"
+                                       required
+                                       maxlength="100"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                                       placeholder="請輸入您的姓名">
+                                @error('customer_name')
+                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                @enderror
+                            </div>
+                        @endif
 
                         <!-- 電話 -->
                         <div>
@@ -228,8 +235,8 @@
                                 <div class="flex items-center">
                                     <i class="fas fa-money-bill-wave text-green-600 mr-3"></i>
                                     <div>
-                                        <div class="font-medium">現金付款</div>
-                                        <div class="text-sm text-gray-500">到店付款</div>
+                                        <div class="font-medium">到店付款</div>
+                                        <div class="text-sm text-gray-500">依店家提供支付方式付款</div>
                                     </div>
                                 </div>
                             </label>
@@ -267,14 +274,27 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 基本表單驗證
     form.addEventListener('submit', function(e) {
-        const customerNameInput = document.getElementById('customer_name');
+        // 檢查是否為 LINE 登入用戶
+        const isLineLoggedIn = {{ auth('customer')->check() ? 'true' : 'false' }};
 
-        // 驗證必填欄位
-        if (!customerNameInput || !customerNameInput.value.trim()) {
-            e.preventDefault();
-            alert('請填寫您的姓名');
-            customerNameInput.focus();
-            return false;
+        if (!isLineLoggedIn) {
+            const customerNameInput = document.getElementById('customer_name');
+
+            // 驗證必填欄位（非 LINE 登入用戶）
+            if (!customerNameInput || !customerNameInput.value.trim()) {
+                e.preventDefault();
+                alert('請填寫您的姓名');
+                customerNameInput.focus();
+                return false;
+            }
+        } else {
+            // LINE 登入用戶，檢查 hidden 欄位的值
+            const hiddenNameInput = document.querySelector('input[name="customer_name"][type="hidden"]');
+            if (!hiddenNameInput || !hiddenNameInput.value.trim()) {
+                e.preventDefault();
+                alert('LINE 登入資訊異常，請重新登入');
+                return false;
+            }
         }
 
         console.log('Order form validation passed');

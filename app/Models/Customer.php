@@ -26,6 +26,7 @@ class Customer extends Authenticatable
         'notification_confirmed',
         'notification_preparing',
         'notification_ready',
+        'notification_cancelled',
     ];
 
     /**
@@ -42,6 +43,7 @@ class Customer extends Authenticatable
             'notification_confirmed' => 'boolean',
             'notification_preparing' => 'boolean',
             'notification_ready' => 'boolean',
+            'notification_cancelled' => 'boolean',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
         ];
