@@ -28,8 +28,7 @@ return new class extends Migration
 
             // 索引
             $table->index(['created_at', 'success']);
-            $table->index('user_id');
-            $table->index('email');
+            $table->index('user_id'); 
         });
     }
 

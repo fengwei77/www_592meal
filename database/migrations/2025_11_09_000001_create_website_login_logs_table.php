@@ -26,8 +26,7 @@ return new class extends Migration
             $table->timestamps();
 
             // 索引
-            $table->index(['created_at', 'success']);
-            $table->index('email');
+            $table->index(['created_at', 'success']); 
         });
     }
 
