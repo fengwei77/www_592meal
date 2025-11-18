@@ -83,12 +83,11 @@ class RolePermissionSeeder extends Seeder
             // 系統管理 (僅 Super Admin)
             'access_system_management',
             'view_system_statistics',
-            'manage_orders',
             'manual_payment_processing',
         ];
 
         foreach ($permissions as $permission) {
-            Permission::create(['name' => $permission]);
+            Permission::firstOrCreate(['name' => $permission]);
         }
 
         // ============================================
@@ -96,11 +95,11 @@ class RolePermissionSeeder extends Seeder
         // ============================================
 
         // 1. Super Admin (超級管理員)
-        $superAdmin = Role::create(['name' => 'super_admin']);
+        $superAdmin = Role::firstOrCreate(['name' => 'super_admin']);
         $superAdmin->givePermissionTo(Permission::all()); // 所有權限
 
         // 2. Store Owner (店家)
-        $storeOwner = Role::create(['name' => 'store_owner']);
+        $storeOwner = Role::firstOrCreate(['name' => 'store_owner']);
         $storeOwner->givePermissionTo([
             // 產品管理
             'manage_products',
